@@ -2,13 +2,13 @@ const hre = require("hardhat");
 
 async function main() {
 
-  const Hello = await hre.ethers.getContractFactory("Hello");
-  const hello = await Hello.deploy();
+  const AcademicRegistry = await hre.ethers.getContractFactory("AcademicRegistry");
+  const academicRegistry = await AcademicRegistry.deploy();
 
-  await hello.waitForDeployment();
+  await academicRegistry.waitForDeployment();
   
   console.log(
-    `Deployed to ${hello.target}!`
+    `Deployed to ${academicRegistry.target}!`
   );
 }
 

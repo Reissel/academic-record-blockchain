@@ -11,6 +11,14 @@ contract AcademicRegistry {
     mapping(address => Institution) private institutions;
 
     address[] private institutionList;
+
+    function getInstitutionList() public view returns(address[] memory) {
+        return institutionList;
+    }
+
+    function getInstitution(address institution_address) public view returns(Institution memory){
+        return institutions[institution_address];
+    }
     
     struct Institution {
         address id_institution_account;
@@ -26,6 +34,10 @@ contract AcademicRegistry {
         string name;
         string course_type;
         address institution_address;
+    }
+
+    function getCoursesFromInstitution(address institution_address) public view returns(Course[] memory){
+        return courses[institution_address];
     }
 
     struct Discipline {
@@ -48,6 +60,10 @@ contract AcademicRegistry {
         address id_student_account;
         string name;
         string document;
+    }
+
+    constructor() {
+        contractOwner = msg.sender;
     }
 
     function addInstitution(address institution_address, string calldata institution_name, string calldata institution_document) public {

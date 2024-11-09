@@ -10,10 +10,10 @@ contract AcademicRegistry {
 
     mapping(address => Institution) private institutions;
 
-    address[] private institutionList;
+    address[] private institution_address_list;
 
-    function getInstitutionList() public view returns(address[] memory) {
-        return institutionList;
+    function getInstitution_address_list() public view returns(address[] memory) {
+        return institution_address_list;
     }
 
     function getInstitution(address institution_address) public view returns(Institution memory){
@@ -30,10 +30,14 @@ contract AcademicRegistry {
 
     Course[] private courseList;
 
+    string stringComparator;
+
     struct Course {
+        string code;
         string name;
         string course_type;
         address institution_address;
+        int number_of_semesters;
     }
 
     function getCoursesFromInstitution(address institution_address) public view returns(Course[] memory){
@@ -46,8 +50,15 @@ contract AcademicRegistry {
         string ementa;
         int workload;
         int credit_count;
-        int year;
-        int semester;
+    }
+
+    // course_code -> Lista de Disciplinas
+    mapping(string => Discipline[]) private disciplines;
+
+    Discipline[] private disciplineList;
+
+    function getDisciplinesFromCourse(string calldata course_code) public view returns(Discipline[] memory){
+        return disciplines[course_code];
     }
 
     struct Professor {
@@ -74,14 +85,14 @@ contract AcademicRegistry {
         );
 
         // Checks if the new institution is registered.
-        for (uint256 i = 0; i < institutionList.length; i++) {
+        for (uint256 i = 0; i < institution_address_list.length; i++) {
             require(
-                institution_address != institutions[institutionList[i]].id_institution_account,
+                institution_address != institutions[institution_address_list[i]].id_institution_account,
                 "Institution is already registered!"
             );
         }
 
-        institutionList.push(institution_address);
+        institution_address_list.push(institution_address);
 
         institutions[institution_address].id_institution_account = institution_address;
         institutions[institution_address].name = institution_name;
@@ -90,16 +101,61 @@ contract AcademicRegistry {
         emit AddedInstitution();
     }
 
-    function addCourse(address institution_address, string calldata course_name, string calldata course_type) public {
+    function addCourse(address institution_address, string calldata course_code, string calldata course_name, string calldata course_type, int number_of_semesters) public {
 
+        // Remove contractOwner from being able to add course (it's being allowed to make testing easier)
         require(
             contractOwner == msg.sender || msg.sender == institution_address,
             "Only the contract owner or the Institution can add a new Course!"
         );
 
-        courseList.push(Course(course_name, course_type, institution_address));
+        // #TODO: Adicionar validação se o curse já existe!
 
-        courses[institution_address].push(Course(course_name, course_type, institution_address));
+        courseList.push(Course (course_code, course_name, course_type, institution_address, number_of_semesters, new Discipline[](0) ));
+
+        courses[institution_address].push(Course (course_code, course_name, course_type, institution_address, number_of_semesters, new Discipline[](0) ));
+
+    }
+
+    function compareStrings(string memory str1) public view returns (bool) {
+        return keccak256(abi.encodePacked(str1)) == keccak256(abi.encodePacked(stringComparator));
+    }
+
+    function addDisciplineToCourse(string calldata course_code, string calldata discipline_code, string calldata discipline_name, string calldata ementa, int workload, int credit_count) public {
+        
+        address institution_address;
+
+        for (uint256 i = 0; i < institution_address_list.length; i++) {
+            if (msg.sender == institutions[institution_address_list[i]].id_institution_account) {
+                institution_address = institutions[institution_address_list[i]].id_institution_account;
+            }
+        }
+
+        require(
+                contractOwner == msg.sender || msg.sender == institution_address,
+                "Only the contract owner or the Institution can add a new Course!"
+        );
+
+        stringComparator = discipline_code;
+
+        Discipline[] storage existent = disciplines[course_code];
+
+        for (uint256 i = 0; i < existent.length; i++) {
+
+            if(compareStrings(existent[i].code)) {
+                stringComparator = "";
+                require(
+                    false,
+                    "Course is already registered!"
+                );
+            }
+
+        }
+
+        // Resets the stringComparator
+        stringComparator = "";
+
+        existent.push(Discipline(discipline_code, discipline_name, ementa, workload, credit_count));
 
     }
 }

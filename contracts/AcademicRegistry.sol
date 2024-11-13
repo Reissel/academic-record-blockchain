@@ -67,6 +67,15 @@ contract AcademicRegistry {
         string document;
     }
 
+    // Maps the Institution address to the professors it has registered
+    mapping(address => Professor[]) private professors;
+
+    Professor[] private professorList;
+
+    function getProfessorsFromInstitution(address institution_address) public view returns(Professor[] memory){
+        return professors[institution_address];
+    }
+
     struct Student {
         address id_student_account;
         string name;
@@ -109,11 +118,11 @@ contract AcademicRegistry {
             "Only the contract owner or the Institution can add a new Course!"
         );
 
-        // #TODO: Adicionar validação se o curse já existe!
+        // #TODO: Adicionar validação se o curso já existe!
 
-        courseList.push(Course (course_code, course_name, course_type, institution_address, number_of_semesters, new Discipline[](0) ));
+        courseList.push(Course (course_code, course_name, course_type, institution_address, number_of_semesters ));
 
-        courses[institution_address].push(Course (course_code, course_name, course_type, institution_address, number_of_semesters, new Discipline[](0) ));
+        courses[institution_address].push(Course (course_code, course_name, course_type, institution_address, number_of_semesters ));
 
     }
 
@@ -155,7 +164,26 @@ contract AcademicRegistry {
         // Resets the stringComparator
         stringComparator = "";
 
-        existent.push(Discipline(discipline_code, discipline_name, ementa, workload, credit_count));
+        disciplines[course_code].push(Discipline(discipline_code, discipline_name, ementa, workload, credit_count));
 
+    }
+
+    function addProfessorToInstitution(address id_professor_account, string calldata name, string calldata document) public {
+
+        address institution_address;
+
+        for (uint256 i = 0; i < institution_address_list.length; i++) {
+            if (msg.sender == institutions[institution_address_list[i]].id_institution_account) {
+                institution_address = institutions[institution_address_list[i]].id_institution_account;
+            }
+        }
+
+        require(
+                contractOwner == msg.sender || msg.sender == institution_address,
+                "Only the contract owner or the Institution can add a new Professor!"
+        );
+
+        professors[msg.sender].push(Professor(id_professor_account, name, document));
+        
     }
 }

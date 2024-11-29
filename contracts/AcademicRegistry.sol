@@ -166,6 +166,7 @@ contract AcademicRegistry {
 
         disciplines[course_code].push(Discipline(discipline_code, discipline_name, ementa, workload, credit_count));
 
+        disciplineExistsInCourse[course_code][discipline_code] = true;
     }
 
     function addProfessorToInstitution(address id_professor_account, string calldata name, string calldata document) public {
@@ -185,5 +186,102 @@ contract AcademicRegistry {
 
         professors[msg.sender].push(Professor(id_professor_account, name, document));
         
+    }
+
+    struct Grade {
+        address studentAddress;
+        string disciplineCode;
+        uint8 period;
+        uint8 media;
+        uint8 attendance;
+        bool status; //true = aprovado, false = reprovado
+    }
+    
+    mapping(address => Grade[]) private grades;
+    mapping(address => Student) private students;
+
+    // Mapeamento para armazenar a relação entre alunos e disciplinas
+    mapping(address => mapping(string => bool)) private enrollments;
+
+    // Mapeamento para armazenar a relação entre discilplinas e cursos
+    mapping(string => mapping(string => bool)) private disciplineExistsInCourse;
+
+    Student[] private studentList;
+
+    function addStudent(address studentAddress, string calldata name, string calldata document) public {
+        address institutionAddress;
+
+        for (uint256 i = 0; i < institution_address_list.length; i++) {
+            if (msg.sender == institutions[institution_address_list[i]].id_institution_account) {
+                institutionAddress = institutions[institution_address_list[i]].id_institution_account;
+            }
+        }
+
+        require(
+            contractOwner == msg.sender || msg.sender == institutionAddress,
+            "Only the contract owner or an Institution can add a grade!"
+        );
+
+        require(
+            students[studentAddress].id_student_account == address(0),
+            "Aluno ja registrado!"
+        );
+
+        students[studentAddress] = Student(studentAddress, name, document);
+    }
+
+    function enrollStudentInDiscipline(address studentAddress, string calldata disciplineCode, string calldata courseCode) public {
+        // #TODO: Verificar se aluno esta matriculado no curso?
+        require(
+            students[studentAddress].id_student_account != address(0),
+            "Aluno nao registrado¹"
+        );
+
+        require(
+            disciplineExistsInCourse[courseCode][disciplineCode],
+            "Disciplina ou curso nao encontrado!"
+        );
+
+        enrollments[studentAddress][disciplineCode] = true;
+    }
+
+    function getAllGradesForStudent(address studentAddress) public view returns (Grade[] memory) {
+        return grades[studentAddress];
+    }
+
+    function addGrade(address studentAddress, string calldata disciplineCode, uint8 period, uint8 media, uint8 attendance, bool status) public {
+        address institutionAddress;
+
+        for (uint256 i = 0; i < institution_address_list.length; i++) {
+            if (msg.sender == institutions[institution_address_list[i]].id_institution_account) {
+                institutionAddress = institutions[institution_address_list[i]].id_institution_account;
+            }
+        }
+
+        require(
+            contractOwner == msg.sender || msg.sender == institutionAddress,
+            "Only the contract owner or an Institution can add a grade!"
+        );
+
+        require(
+            students[studentAddress].id_student_account != address(0),
+            "Aluno nao registrado!"
+        );
+
+        require(
+            enrollments[studentAddress][disciplineCode],
+            "Aluno nao matriculado na disciplina!"
+        );
+
+        // Verifica se a nota para a disciplina no periodo ja existe
+        for (uint i = 0; i < grades[studentAddress].length; i++) {
+            require(
+                !(keccak256(abi.encodePacked(grades[studentAddress][i].disciplineCode)) == keccak256(abi.encodePacked(disciplineCode)) &&
+                grades[studentAddress][i].period == period),
+                "Nota ja lancada para esta disciplina nesse periodo!"
+            );
+        }
+
+        grades[studentAddress].push(Grade(studentAddress, disciplineCode, period, media, attendance, status));
     }
 }

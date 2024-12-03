@@ -118,7 +118,33 @@ contract AcademicRegistry {
             "Only the contract owner or the Institution can add a new Course!"
         );
 
-        // #TODO: Adicionar validação se o curso já existe!
+        // Checks if the institution is registered.
+        for (uint256 i = 0; i < institution_address_list.length; i++) {
+            require(
+                institution_address == institutions[institution_address_list[i]].id_institution_account,
+                "Institution is not registered!"
+            );
+        }
+
+        stringComparator = course_code;
+
+        // Checks if the course is already registered in the institution.
+        Course[] storage existentCourses = courses[institution_address];
+
+        for (uint256 i = 0; i < existentCourses.length; i++) {
+
+            if(compareStrings(existentCourses[i].code)) {
+                // Resets the stringComparator
+                stringComparator = "";
+                require(
+                    false,
+                    "Course is already registered!"
+                );
+            }
+        }
+
+        // Resets the stringComparator
+        stringComparator = "";
 
         courseList.push(Course (course_code, course_name, course_type, institution_address, number_of_semesters ));
 
@@ -152,10 +178,11 @@ contract AcademicRegistry {
         for (uint256 i = 0; i < existent.length; i++) {
 
             if(compareStrings(existent[i].code)) {
+                // Resets the stringComparator
                 stringComparator = "";
                 require(
                     false,
-                    "Course is already registered!"
+                    "Discipline is already registered!"
                 );
             }
 

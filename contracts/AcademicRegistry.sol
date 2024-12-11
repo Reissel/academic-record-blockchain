@@ -2,46 +2,29 @@
 pragma solidity ^0.8.27;
 
 contract AcademicRegistry {
+   // ** Events **
+    event InstitutionAdded(address indexed institutionAddress, string name);
+    event CourseAdded(address indexed institutionAddress, string courseCode);
+    event DisciplineAdded(string courseCode, string disciplineCode);
+    event ProfessorAdded(address indexed institutionAddress, address professorAddress, string name);
+    event StudentAdded(address indexed studentAddress, string name);
+    event GradeAdded(address indexed studentAddress, string disciplineCode, uint8 period);
 
-    event AddedInstitution();
-    event AddedCourse();
-
+    // ** Owner **
     address private contractOwner;
 
-    mapping(address => Institution) private institutions;
-
-    address[] private institution_address_list;
-
-    function getInstitution_address_list() public view returns(address[] memory) {
-        return institution_address_list;
-    }
-
-    function getInstitution(address institution_address) public view returns(Institution memory){
-        return institutions[institution_address];
-    }
-    
+    // ** Structures **
     struct Institution {
-        address id_institution_account;
+        address idInstitutionAccount;
         string name;
         string document;
     }
 
-    mapping(address => Course[]) private courses;
-
-    Course[] private courseList;
-
-    string stringComparator;
-
     struct Course {
         string code;
         string name;
-        string course_type;
-        address institution_address;
-        int number_of_semesters;
-    }
-
-    function getCoursesFromInstitution(address institution_address) public view returns(Course[] memory){
-        return courses[institution_address];
+        string courseType;
+        int numberOfSemesters;
     }
 
     struct Discipline {
@@ -49,266 +32,338 @@ contract AcademicRegistry {
         string name;
         string ementa;
         int workload;
-        int credit_count;
-    }
-
-    // course_code -> Lista de Disciplinas
-    mapping(string => Discipline[]) private disciplines;
-
-    Discipline[] private disciplineList;
-
-    function getDisciplinesFromCourse(string calldata course_code) public view returns(Discipline[] memory){
-        return disciplines[course_code];
+        int creditCount;
     }
 
     struct Professor {
-        address id_professor_account;
+        address idProfessorAccount;
         string name;
         string document;
-    }
-
-    // Maps the Institution address to the professors it has registered
-    mapping(address => Professor[]) private professors;
-
-    Professor[] private professorList;
-
-    function getProfessorsFromInstitution(address institution_address) public view returns(Professor[] memory){
-        return professors[institution_address];
     }
 
     struct Student {
-        address id_student_account;
+        address idStudentAccount;
         string name;
         string document;
     }
 
-    constructor() {
-        contractOwner = msg.sender;
-    }
-
-    function addInstitution(address institution_address, string calldata institution_name, string calldata institution_document) public {
-        
-        require(
-            contractOwner == msg.sender,
-            "Only the contract owner can add a new Institution!"
-        );
-
-        // Checks if the new institution is registered.
-        for (uint256 i = 0; i < institution_address_list.length; i++) {
-            require(
-                institution_address != institutions[institution_address_list[i]].id_institution_account,
-                "Institution is already registered!"
-            );
-        }
-
-        institution_address_list.push(institution_address);
-
-        institutions[institution_address].id_institution_account = institution_address;
-        institutions[institution_address].name = institution_name;
-        institutions[institution_address].document = institution_document;
-
-        emit AddedInstitution();
-    }
-
-    function addCourse(address institution_address, string calldata course_code, string calldata course_name, string calldata course_type, int number_of_semesters) public {
-
-        // Remove contractOwner from being able to add course (it's being allowed to make testing easier)
-        require(
-            contractOwner == msg.sender || msg.sender == institution_address,
-            "Only the contract owner or the Institution can add a new Course!"
-        );
-
-        // Checks if the institution is registered.
-        for (uint256 i = 0; i < institution_address_list.length; i++) {
-            require(
-                institution_address == institutions[institution_address_list[i]].id_institution_account,
-                "Institution is not registered!"
-            );
-        }
-
-        stringComparator = course_code;
-
-        // Checks if the course is already registered in the institution.
-        Course[] storage existentCourses = courses[institution_address];
-
-        for (uint256 i = 0; i < existentCourses.length; i++) {
-
-            if(compareStrings(existentCourses[i].code)) {
-                // Resets the stringComparator
-                stringComparator = "";
-                require(
-                    false,
-                    "Course is already registered!"
-                );
-            }
-        }
-
-        // Resets the stringComparator
-        stringComparator = "";
-
-        courseList.push(Course (course_code, course_name, course_type, institution_address, number_of_semesters ));
-
-        courses[institution_address].push(Course (course_code, course_name, course_type, institution_address, number_of_semesters ));
-
-    }
-
-    function compareStrings(string memory str1) public view returns (bool) {
-        return keccak256(abi.encodePacked(str1)) == keccak256(abi.encodePacked(stringComparator));
-    }
-
-    function addDisciplineToCourse(string calldata course_code, string calldata discipline_code, string calldata discipline_name, string calldata ementa, int workload, int credit_count) public {
-        
-        address institution_address;
-
-        for (uint256 i = 0; i < institution_address_list.length; i++) {
-            if (msg.sender == institutions[institution_address_list[i]].id_institution_account) {
-                institution_address = institutions[institution_address_list[i]].id_institution_account;
-            }
-        }
-
-        require(
-                contractOwner == msg.sender || msg.sender == institution_address,
-                "Only the contract owner or the Institution can add a new Course!"
-        );
-
-        stringComparator = discipline_code;
-
-        Discipline[] storage existent = disciplines[course_code];
-
-        for (uint256 i = 0; i < existent.length; i++) {
-
-            if(compareStrings(existent[i].code)) {
-                // Resets the stringComparator
-                stringComparator = "";
-                require(
-                    false,
-                    "Discipline is already registered!"
-                );
-            }
-
-        }
-
-        // Resets the stringComparator
-        stringComparator = "";
-
-        disciplines[course_code].push(Discipline(discipline_code, discipline_name, ementa, workload, credit_count));
-
-        disciplineExistsInCourse[course_code][discipline_code] = true;
-    }
-
-    function addProfessorToInstitution(address id_professor_account, string calldata name, string calldata document) public {
-
-        address institution_address;
-
-        for (uint256 i = 0; i < institution_address_list.length; i++) {
-            if (msg.sender == institutions[institution_address_list[i]].id_institution_account) {
-                institution_address = institutions[institution_address_list[i]].id_institution_account;
-            }
-        }
-
-        require(
-                contractOwner == msg.sender || msg.sender == institution_address,
-                "Only the contract owner or the Institution can add a new Professor!"
-        );
-
-        professors[msg.sender].push(Professor(id_professor_account, name, document));
-        
-    }
-
     struct Grade {
-        address studentAddress;
         string disciplineCode;
         uint8 period;
         uint8 media;
         uint8 attendance;
-        bool status; //true = aprovado, false = reprovado
+        bool status; // true = approved, false = failed
     }
-    
-    mapping(address => Grade[]) private grades;
+
+    // ** State Variables **
+    mapping(address => Institution) private institutions;
+    mapping(address => Course[]) private courses;
+
+    // Maps the Institution address to the professors it has registered
+    mapping(address => Professor[]) private professors;
+
     mapping(address => Student) private students;
+    mapping(address => Grade[]) private grades;
+    
+    // Mapping to store the relationship between disciplines and courses
+    mapping(bytes32 => mapping(bytes32 => bool)) private disciplineExistsInCourse; // [courseHash][disciplineHash]
+    mapping(bytes32 => Discipline[]) private disciplinesByCourse; // [courseHash] => disciplines
 
-    // Mapeamento para armazenar a relação entre alunos e disciplinas
-    mapping(address => mapping(string => bool)) private enrollments;
+    mapping(address => mapping(address => bool)) private isProfessorInInstitution;
 
-    // Mapeamento para armazenar a relação entre discilplinas e cursos
-    mapping(string => mapping(string => bool)) private disciplineExistsInCourse;
+    // Mapping to store the relationship between students and disciplines
+    mapping(address => mapping(bytes32 => bool)) private enrollments;
 
-    Student[] private studentList;
+    address[] private institutionAddressList;
 
-    function addStudent(address studentAddress, string calldata name, string calldata document) public {
-        address institutionAddress;
+    // ** Modifiers **
+    modifier onlyOwner() {
+        require(msg.sender == contractOwner, "Only the contract owner can perform this action!");
+        _;
+    }
 
-        for (uint256 i = 0; i < institution_address_list.length; i++) {
-            if (msg.sender == institutions[institution_address_list[i]].id_institution_account) {
-                institutionAddress = institutions[institution_address_list[i]].id_institution_account;
+    modifier onlyInstitution(address institutionAddress) {
+        require(
+            msg.sender == institutionAddress,
+            "Only the institution can perform this action!"
+        );
+        _;
+    }
+
+    modifier institutionExists(address institutionAddress) {
+        require(
+            institutions[institutionAddress].idInstitutionAccount != address(0),
+            "Institution is not registered!"
+        );
+        _;
+    }
+
+    modifier courseExists(address institutionAddress, string memory courseCode) {
+        bool exists = false;
+        Course[] storage institutionCourses = courses[institutionAddress];
+        for (uint256 i = 0; i < institutionCourses.length; i++) {
+            if (
+                keccak256(abi.encodePacked(institutionCourses[i].code)) ==
+                keccak256(abi.encodePacked(courseCode))
+            ) {
+                exists = true;
+                break;
             }
         }
-
-        require(
-            contractOwner == msg.sender || msg.sender == institutionAddress,
-            "Only the contract owner or an Institution can add a grade!"
-        );
-
-        require(
-            students[studentAddress].id_student_account == address(0),
-            "Aluno ja registrado!"
-        );
-
-        students[studentAddress] = Student(studentAddress, name, document);
+        require(exists, "Course not found!");
+        _;
     }
 
-    function enrollStudentInDiscipline(address studentAddress, string calldata disciplineCode, string calldata courseCode) public {
-        // #TODO: Verificar se aluno esta matriculado no curso?
-        require(
-            students[studentAddress].id_student_account != address(0),
-            "Aluno nao registrado¹"
-        );
-
-        require(
-            disciplineExistsInCourse[courseCode][disciplineCode],
-            "Disciplina ou curso nao encontrado!"
-        );
-
-        enrollments[studentAddress][disciplineCode] = true;
+    // ** Constructor **
+    constructor() {
+        contractOwner = msg.sender;
     }
 
-    function getAllGradesForStudent(address studentAddress) public view returns (Grade[] memory) {
-        return grades[studentAddress];
+    // ** Institution Functions **
+    function addInstitution(
+        address institutionAddress,
+        string calldata name,
+        string calldata document
+    ) public onlyOwner {
+        require(
+            institutions[institutionAddress].idInstitutionAccount == address(0),
+            "Institution already registered!"
+        );
+
+        institutions[institutionAddress] = Institution(institutionAddress, name, document);
+        institutionAddressList.push(institutionAddress);
+
+        emit InstitutionAdded(institutionAddress, name);
     }
 
-    function addGrade(address studentAddress, string calldata disciplineCode, uint8 period, uint8 media, uint8 attendance, bool status) public {
-        address institutionAddress;
+    function getInstitution(address institutionAddress)
+        public
+        view
+        returns (Institution memory)
+    {
+        return institutions[institutionAddress];
+    }
 
-        for (uint256 i = 0; i < institution_address_list.length; i++) {
-            if (msg.sender == institutions[institution_address_list[i]].id_institution_account) {
-                institutionAddress = institutions[institution_address_list[i]].id_institution_account;
-            }
-        }
+    function getInstitutionList()
+        public
+        view
+        returns (address[] memory)
+    {
+        return institutionAddressList;
+    }
 
-        require(
-            contractOwner == msg.sender || msg.sender == institutionAddress,
-            "Only the contract owner or an Institution can add a grade!"
-        );
-
-        require(
-            students[studentAddress].id_student_account != address(0),
-            "Aluno nao registrado!"
-        );
-
-        require(
-            enrollments[studentAddress][disciplineCode],
-            "Aluno nao matriculado na disciplina!"
-        );
-
-        // Verifica se a nota para a disciplina no periodo ja existe
-        for (uint i = 0; i < grades[studentAddress].length; i++) {
+    // ** Course Functions **
+    function addCourse(
+        address institutionAddress,
+        string calldata code,
+        string calldata name,
+        string calldata courseType,
+        int numberOfSemesters
+    ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
+        // Checks if the course is already registered in the institution
+        Course[] storage institutionCourses = courses[institutionAddress];
+        for (uint256 i = 0; i < institutionCourses.length; i++) {
             require(
-                !(keccak256(abi.encodePacked(grades[studentAddress][i].disciplineCode)) == keccak256(abi.encodePacked(disciplineCode)) &&
-                grades[studentAddress][i].period == period),
-                "Nota ja lancada para esta disciplina nesse periodo!"
+                keccak256(abi.encodePacked(institutionCourses[i].code)) !=
+                    keccak256(abi.encodePacked(code)),
+                "Course already registered!"
             );
         }
 
-        grades[studentAddress].push(Grade(studentAddress, disciplineCode, period, media, attendance, status));
+        courses[institutionAddress].push(
+            Course(code, name, courseType, numberOfSemesters)
+        );
+
+        emit CourseAdded(institutionAddress, code);
+    }
+
+    function getCoursesFromInstitution(address institutionAddress)
+        public
+        view
+        returns (Course[] memory)
+    {
+        return courses[institutionAddress];
+    }
+
+    // ** Discipline Functions **
+    function addDisciplineToCourse(
+        address institutionAddress,
+        string calldata courseCode,
+        string calldata disciplineCode,
+        string calldata name,
+        string calldata ementa,
+        int workload,
+        int creditCount
+    ) public courseExists(institutionAddress, courseCode) onlyInstitution(institutionAddress) {
+        _addDisciplineToCourse(courseCode, disciplineCode, name, ementa, workload, creditCount);
+    }
+
+    function _addDisciplineToCourse(
+        string calldata courseCode,
+        string calldata disciplineCode,
+        string calldata name,
+        string calldata ementa,
+        int workload,
+        int creditCount
+    ) internal {
+        // Hash the course code and discipline code for consistent mapping
+        bytes32 courseHash = keccak256(abi.encodePacked(courseCode));
+        bytes32 disciplineHash = keccak256(abi.encodePacked(disciplineCode));
+
+        // Check if discipline already exists in the course
+        require(
+            !disciplineExistsInCourse[courseHash][disciplineHash],
+            "Discipline already registered in this course!"
+        );
+
+        // Add the discipline to the course
+        disciplinesByCourse[courseHash].push(
+            Discipline(disciplineCode, name, ementa, workload, creditCount)
+        );
+
+        // Mark discipline as registered in the course
+        disciplineExistsInCourse[courseHash][disciplineHash] = true;
+
+        emit DisciplineAdded(courseCode, disciplineCode);
+    }
+
+    function getDisciplinesFromCourse(string calldata courseCode)
+        public
+        view
+        returns (Discipline[] memory)
+    {
+        bytes32 courseHash = keccak256(abi.encodePacked(courseCode));
+        return disciplinesByCourse[courseHash];
+    }
+
+    // ** Professor Functions **
+    function addProfessorToInstitution(
+        address institutionAddress,
+        address professorAddress,
+        string calldata name,
+        string calldata document
+    ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
+        // Check if professor is already registered
+        require(
+            !isProfessorInInstitution[institutionAddress][professorAddress],
+            "Professor already registered in this institution!"
+        );
+
+        professors[institutionAddress].push(Professor(professorAddress, name, document));
+        isProfessorInInstitution[institutionAddress][professorAddress] = true;
+
+        emit ProfessorAdded(institutionAddress, professorAddress, name);
+    }
+
+    function getProfessorsFromInstitution(address institutionAddress)
+        public
+        view
+        returns (Professor[] memory)
+    {
+        return professors[institutionAddress];
+    }
+
+    // ** Student Functions **
+    function addStudent(
+        address institutionAddress,
+        address studentAddress,
+        string calldata name,
+        string calldata document
+    ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
+        // Check if student is already registered
+        require(
+            students[studentAddress].idStudentAccount == address(0),
+            "Student already registered!"
+        );
+
+        students[studentAddress] = Student(studentAddress, name, document);
+
+        emit StudentAdded(studentAddress, name);
+    }
+
+    function getStudent(address studentAddress)
+        public
+        view
+        returns (Student memory)
+    {
+        return students[studentAddress];
+    }
+
+    function enrollStudentInDiscipline(
+        address institutionAddress,
+        address studentAddress,
+        string calldata disciplineCode,
+        string calldata courseCode
+    ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
+        bytes32 courseHash = keccak256(abi.encodePacked(courseCode));
+        bytes32 disciplineHash = keccak256(abi.encodePacked(disciplineCode));
+
+        // Check if student is registered
+        require(
+            students[studentAddress].idStudentAccount != address(0),
+            "Student not registered!"
+        );
+
+        // Check if discipline exists in the course
+        require(
+            disciplineExistsInCourse[courseHash][disciplineHash],
+            "Discipline not found in the course!"
+        );
+
+        // Enroll the student
+        enrollments[studentAddress][disciplineHash] = true;
+    }
+
+    // ** Grade Functions **
+    function addGrade(
+        address institutionAddress,
+        address studentAddress,
+        string calldata disciplineCode,
+        uint8 period,
+        uint8 media,
+        uint8 attendance,
+        bool status
+    ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
+        bytes32 disciplineHash = keccak256(abi.encodePacked(disciplineCode));
+
+        // Check if student is registered
+        require(
+            students[studentAddress].idStudentAccount != address(0),
+            "Student not registered!"
+        );
+
+        // Check if student is enrolled in the discipline
+        require(
+            enrollments[studentAddress][disciplineHash],
+            "Student not enrolled in the discipline!"
+        );
+
+        // Check if grade for this period and discipline already exists
+        Grade[] storage studentGrades = grades[studentAddress];
+        for (uint256 i = 0; i < studentGrades.length; i++) {
+            require(
+                !(
+                    keccak256(abi.encodePacked(studentGrades[i].disciplineCode)) ==
+                        keccak256(abi.encodePacked(disciplineCode)) &&
+                    studentGrades[i].period == period
+                ),
+                "Grade already recorded for this discipline and period!"
+            );
+        }
+
+        // Add grade
+        grades[studentAddress].push(
+            Grade(disciplineCode, period, media, attendance, status)
+        );
+
+        emit GradeAdded(studentAddress, disciplineCode, period);
+    }
+
+    function getGrades(address studentAddress)
+        public
+        view
+        returns (Grade[] memory)
+    {
+        return grades[studentAddress];
     }
 }

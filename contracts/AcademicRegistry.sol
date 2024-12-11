@@ -1,25 +1,52 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.27;
 
+/// @title Academic registry smart contract.
+/// @notice This contract manages records for institutions, courses, disciplines, professors, students, and grades in an academic registry system.
 contract AcademicRegistry {
-   // ** Events **
+    /// @dev Emitted when a new institution is added.
+    /// @param institutionAddress The address of the institution being registered.
+    /// @param name The name of the institution.
     event InstitutionAdded(address indexed institutionAddress, string name);
+
+    /// @dev Emitted when a new course is added.
+    /// @param institutionAddress The address of the institution adding the course.
+    /// @param courseCode The code of the course being added.
     event CourseAdded(address indexed institutionAddress, string courseCode);
+
+    /// @dev Emitted when a new discipline is added to a course.
+    /// @param courseCode The code of the course to which the discipline is being added.
+    /// @param disciplineCode The code of the discipline being added.
     event DisciplineAdded(string courseCode, string disciplineCode);
+
+    /// @dev Emitted when a new professor is added to an institution.
+    /// @param institutionAddress The address of the institution adding the professor.
+    /// @param professorAddress The address of the professor being added.
+    /// @param name The name of the professor.
     event ProfessorAdded(address indexed institutionAddress, address professorAddress, string name);
+
+    /// @dev Emitted when a new student is added.
+    /// @param studentAddress The address of the student being added.
+    /// @param name The name of the student.
     event StudentAdded(address indexed studentAddress, string name);
+
+    /// @dev Emitted when a new grade is added for a student.
+    /// @param studentAddress The address of the student receiving the grade.
+    /// @param disciplineCode The code of the discipline for which the grade is recorded.
+    /// @param period The period in which the grade was recorded.
     event GradeAdded(address indexed studentAddress, string disciplineCode, uint8 period);
 
-    // ** Owner **
+    /// @dev Contract ownership. Only the owner can perform certain actions.
     address private contractOwner;
 
-    // ** Structures **
+    /// @dev Represents an institution.
     struct Institution {
         address idInstitutionAccount;
         string name;
         string document;
     }
 
+    /// @dev Represents a course.
     struct Course {
         string code;
         string name;
@@ -27,6 +54,7 @@ contract AcademicRegistry {
         int numberOfSemesters;
     }
 
+    /// @dev Represents a discipline.
     struct Discipline {
         string code;
         string name;
@@ -35,18 +63,21 @@ contract AcademicRegistry {
         int creditCount;
     }
 
+    /// @dev Represents a professor.
     struct Professor {
         address idProfessorAccount;
         string name;
         string document;
     }
 
+    /// @dev Represents a student.
     struct Student {
         address idStudentAccount;
         string name;
         string document;
     }
 
+    /// @dev Represents a student's grade.
     struct Grade {
         string disciplineCode;
         uint8 period;
@@ -76,12 +107,13 @@ contract AcademicRegistry {
 
     address[] private institutionAddressList;
 
-    // ** Modifiers **
+    /// @dev Restricts function execution to the contract owner.
     modifier onlyOwner() {
         require(msg.sender == contractOwner, "Only the contract owner can perform this action!");
         _;
     }
 
+    /// @dev Restricts function execution to a specific institution.
     modifier onlyInstitution(address institutionAddress) {
         require(
             msg.sender == institutionAddress,
@@ -90,6 +122,7 @@ contract AcademicRegistry {
         _;
     }
 
+    /// @dev Ensures the institution is registered.
     modifier institutionExists(address institutionAddress) {
         require(
             institutions[institutionAddress].idInstitutionAccount != address(0),
@@ -98,6 +131,7 @@ contract AcademicRegistry {
         _;
     }
 
+    /// @dev Ensures the course exists for the provided institution.
     modifier courseExists(address institutionAddress, string memory courseCode) {
         bool exists = false;
         Course[] storage institutionCourses = courses[institutionAddress];
@@ -114,12 +148,16 @@ contract AcademicRegistry {
         _;
     }
 
-    // ** Constructor **
+    /// @dev Contract constructor that sets the owner.
     constructor() {
         contractOwner = msg.sender;
     }
 
-    // ** Institution Functions **
+    /// @notice Adds a new institution.
+    /// @dev Verifies that the institution is not already registered before adding it. Maintains a list of institution addresses for enumeration.
+    /// @param institutionAddress Address of the institution.
+    /// @param name Name of the institution.
+    /// @param document Identification document of the institution.
     function addInstitution(
         address institutionAddress,
         string calldata name,
@@ -136,6 +174,10 @@ contract AcademicRegistry {
         emit InstitutionAdded(institutionAddress, name);
     }
 
+    /// @notice Retrieves an institution's data.
+    /// @dev Fetches the details of an institution using its address as the mapping key.
+    /// @param institutionAddress Address of the institution.
+    /// @return Institution structure.
     function getInstitution(address institutionAddress)
         public
         view
@@ -144,6 +186,9 @@ contract AcademicRegistry {
         return institutions[institutionAddress];
     }
 
+    /// @notice Retrieves the list of registered institution addresses.
+    /// @dev Returns the complete list of addresses for all registered institutions.
+    /// @return List of institution addresses.
     function getInstitutionList()
         public
         view
@@ -152,7 +197,13 @@ contract AcademicRegistry {
         return institutionAddressList;
     }
 
-    // ** Course Functions **
+    /// @notice Adds a new course to an institution.
+    /// @dev Ensures that the course does not already exist in the institution before adding it to the mapping.
+    /// @param institutionAddress Address of the institution.
+    /// @param code Unique course code.
+    /// @param name Name of the course.
+    /// @param courseType Type of the course (e.g., Bachelor, Masters).
+    /// @param numberOfSemesters Number of semesters in the course.
     function addCourse(
         address institutionAddress,
         string calldata code,
@@ -177,6 +228,10 @@ contract AcademicRegistry {
         emit CourseAdded(institutionAddress, code);
     }
 
+    /// @notice Retrieves all courses associated with an institution.
+    /// @dev Retrieves the list of courses offered by an institution using its address as the mapping key.
+    /// @param institutionAddress Address of the institution.
+    /// @return List of courses offered by the institution.
     function getCoursesFromInstitution(address institutionAddress)
         public
         view
@@ -185,7 +240,15 @@ contract AcademicRegistry {
         return courses[institutionAddress];
     }
 
-    // ** Discipline Functions **
+    /// @notice Adds a new discipline to a specific course in an institution.
+    /// @dev Uses the internal helper `_addDisciplineToCourse` to handle logic. Ensures the course exists before adding the discipline.
+    /// @param institutionAddress Address of the institution.
+    /// @param courseCode Code of the course to which the discipline is being added.
+    /// @param disciplineCode Unique code of the discipline.
+    /// @param name Name of the discipline.
+    /// @param ementa Syllabus of the discipline.
+    /// @param workload Workload of the discipline in hours.
+    /// @param creditCount Number of credits assigned to the discipline.
     function addDisciplineToCourse(
         address institutionAddress,
         string calldata courseCode,
@@ -198,6 +261,13 @@ contract AcademicRegistry {
         _addDisciplineToCourse(courseCode, disciplineCode, name, ementa, workload, creditCount);
     }
 
+    /// @dev Internal function to add a discipline to a course.
+    /// @param courseCode Code of the course to which the discipline is being added.
+    /// @param disciplineCode Unique code of the discipline.
+    /// @param name Name of the discipline.
+    /// @param ementa Syllabus of the discipline.
+    /// @param workload Workload of the discipline in hours.
+    /// @param creditCount Number of credits assigned to the discipline.
     function _addDisciplineToCourse(
         string calldata courseCode,
         string calldata disciplineCode,
@@ -227,6 +297,10 @@ contract AcademicRegistry {
         emit DisciplineAdded(courseCode, disciplineCode);
     }
 
+    /// @notice Retrieves the list of disciplines associated with a course.
+    /// @dev Retrieves all disciplines associated with a specific course using its hashed code as the mapping key.
+    /// @param courseCode Code of the course whose disciplines are to be retrieved.
+    /// @return List of disciplines offered in the course.
     function getDisciplinesFromCourse(string calldata courseCode)
         public
         view
@@ -236,7 +310,12 @@ contract AcademicRegistry {
         return disciplinesByCourse[courseHash];
     }
 
-    // ** Professor Functions **
+    /// @notice Adds a professor to a specific institution.
+    /// @dev Ensures that the professor is not already registered in the institution before adding them. Maintains a mapping to track registration status.
+    /// @param institutionAddress Address of the institution where the professor is being added.
+    /// @param professorAddress Address of the professor being added.
+    /// @param name Name of the professor.
+    /// @param document Identification document of the professor.
     function addProfessorToInstitution(
         address institutionAddress,
         address professorAddress,
@@ -255,6 +334,10 @@ contract AcademicRegistry {
         emit ProfessorAdded(institutionAddress, professorAddress, name);
     }
 
+    /// @notice Retrieves the list of professors associated with a specific institution.
+    /// @dev Retrieves the list of professors associated with a specific institution using its address as the mapping key.
+    /// @param institutionAddress Address of the institution.
+    /// @return List of professors registered in the institution.
     function getProfessorsFromInstitution(address institutionAddress)
         public
         view
@@ -263,7 +346,12 @@ contract AcademicRegistry {
         return professors[institutionAddress];
     }
 
-    // ** Student Functions **
+    /// @notice Adds a student to the academic registry system.
+    /// @dev Verifies that the student is not already registered before adding them to the mapping.
+    /// @param institutionAddress Address of the institution where the student is being added.
+    /// @param studentAddress Address of the student being added.
+    /// @param name Name of the student.
+    /// @param document Identification document of the student.
     function addStudent(
         address institutionAddress,
         address studentAddress,
@@ -281,6 +369,10 @@ contract AcademicRegistry {
         emit StudentAdded(studentAddress, name);
     }
 
+    /// @notice Retrieves a student's data from the registry.
+    /// @dev Fetches student details using their unique address as the mapping key.
+    /// @param studentAddress Address of the student.
+    /// @return Student structure containing the student's data.
     function getStudent(address studentAddress)
         public
         view
@@ -289,6 +381,12 @@ contract AcademicRegistry {
         return students[studentAddress];
     }
 
+    /// @notice Enrolls a student in a discipline within a course.
+    /// @dev Checks if the institution, student, and discipline exist before allowing enrollment. Uses hashes for efficient mapping lookups.
+    /// @param institutionAddress Address of the institution offering the discipline.
+    /// @param studentAddress Address of the student being enrolled.
+    /// @param disciplineCode Code of the discipline.
+    /// @param courseCode Code of the course containing the discipline.
     function enrollStudentInDiscipline(
         address institutionAddress,
         address studentAddress,
@@ -314,7 +412,15 @@ contract AcademicRegistry {
         enrollments[studentAddress][disciplineHash] = true;
     }
 
-    // ** Grade Functions **
+    /// @notice Adds a grade for a student in a specific discipline and period.
+    /// @dev Verifies the existence of the institution, student, and discipline. Ensures that no duplicate grades exist for the same period and discipline before adding a new grade.
+    /// @param institutionAddress Address of the institution recording the grade.
+    /// @param studentAddress Address of the student receiving the grade.
+    /// @param disciplineCode Code of the discipline for which the grade is recorded.
+    /// @param period Academic period in which the grade is being recorded.
+    /// @param media Final grade of the student.
+    /// @param attendance Attendance percentage of the student.
+    /// @param status Approval status (true = approved, false = failed).
     function addGrade(
         address institutionAddress,
         address studentAddress,
@@ -359,6 +465,10 @@ contract AcademicRegistry {
         emit GradeAdded(studentAddress, disciplineCode, period);
     }
 
+    /// @notice Retrieves all grades for a specific student.
+    /// @dev Grades are stored in an array indexed by the student's address.
+    /// @param studentAddress Address of the student.
+    /// @return An array of Grade structures containing the student's grades.
     function getGrades(address studentAddress)
         public
         view

@@ -36,6 +36,11 @@ contract AcademicRegistry {
     /// @param period The period in which the grade was recorded.
     event GradeAdded(address indexed studentAddress, string disciplineCode, uint8 period);
 
+    /// @dev Emitted when a new address is allowed by a student.
+    /// @param studentAddress The address of the student allowing the address.
+    /// @param allowedAddress The address being allowed by the student.
+    event AllowedAddressAdded(address indexed studentAddress, address allowedAddress);
+
     /// @dev Contract ownership. Only the owner can perform certain actions.
     address private contractOwner;
 
@@ -105,6 +110,9 @@ contract AcademicRegistry {
     // Mapping to store the relationship between students and disciplines
     mapping(address => mapping(bytes32 => bool)) private enrollments;
 
+    // Mapping to store addresses that can retrieve Student data
+    mapping(address => mapping(address => bool)) private isAllowedByStudent;
+
     address[] private institutionAddressList;
 
     /// @dev Restricts function execution to the contract owner.
@@ -122,11 +130,38 @@ contract AcademicRegistry {
         _;
     }
 
+    /// @dev Restricts function execution to a specific student.
+    modifier onlyStudent(address studentAddress) {
+        require(
+            msg.sender == studentAddress,
+            "Only the student can perform this action!"
+        );
+        _;
+    }
+
+    /// @dev Restricts function execution to a specific student.
+    modifier onlyAllowedAddresses(address studentAddress, address requesterAddress) {
+        require(
+            isAllowedByStudent[studentAddress][msg.sender] == true,
+            "Only allowed addresses can perform this action!"
+        );
+        _;
+    }
+
     /// @dev Ensures the institution is registered.
     modifier institutionExists(address institutionAddress) {
         require(
             institutions[institutionAddress].idInstitutionAccount != address(0),
             "Institution is not registered!"
+        );
+        _;
+    }
+
+    /// @dev Ensures the student is registered.
+    modifier studentExists(address studentAddress) {
+        require(
+            students[studentAddress].idStudentAccount != address(0),
+            "Student is not registered!"
         );
         _;
     }
@@ -365,6 +400,8 @@ contract AcademicRegistry {
         );
 
         students[studentAddress] = Student(studentAddress, name, document);
+        isAllowedByStudent[studentAddress][institutionAddress] = true;
+        isAllowedByStudent[studentAddress][studentAddress] = true;
 
         emit StudentAdded(studentAddress, name);
     }
@@ -470,10 +507,27 @@ contract AcademicRegistry {
     /// @param studentAddress Address of the student.
     /// @return An array of Grade structures containing the student's grades.
     function getGrades(address studentAddress)
-        public
+        public onlyAllowedAddresses(studentAddress, msg.sender)
         view
         returns (Grade[] memory)
     {
         return grades[studentAddress];
+    }
+
+    /// @notice Adds an address to be allowed to retrieve the student data.
+    /// @dev Verifies the existence of the student.
+    /// @param allowedAddress Address of the account to be given permition to retrieve student data.
+    /// @param studentAddress Address of the student allowing its data to be retrieved by the allowedAddress.
+    function addAllowedAddress(
+        address allowedAddress,
+        address studentAddress) public studentExists(studentAddress) onlyStudent(studentAddress) {
+
+            require(
+                isAllowedByStudent[studentAddress][allowedAddress] == false,
+                "Address is already allowed!"
+            );
+
+            isAllowedByStudent[studentAddress][allowedAddress] = true;
+            emit AllowedAddressAdded(studentAddress, allowedAddress);
     }
 }

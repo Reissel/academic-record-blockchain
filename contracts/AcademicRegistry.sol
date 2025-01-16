@@ -79,7 +79,7 @@ contract AcademicRegistry {
     struct Student {
         address idStudentAccount;
         string name;
-        string document;
+        string publicKey;
     }
 
     /// @dev Represents a student's grade.
@@ -386,12 +386,10 @@ contract AcademicRegistry {
     /// @param institutionAddress Address of the institution where the student is being added.
     /// @param studentAddress Address of the student being added.
     /// @param name Name of the student.
-    /// @param document Identification document of the student.
     function addStudent(
         address institutionAddress,
         address studentAddress,
-        string calldata name,
-        string calldata document
+        string calldata name
     ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
         // Check if student is already registered
         require(
@@ -399,7 +397,7 @@ contract AcademicRegistry {
             "Student already registered!"
         );
 
-        students[studentAddress] = Student(studentAddress, name, document);
+        students[studentAddress] = Student(studentAddress, name, "");
         isAllowedByStudent[studentAddress][institutionAddress] = true;
         isAllowedByStudent[studentAddress][studentAddress] = true;
 
@@ -495,6 +493,7 @@ contract AcademicRegistry {
         }
 
         // Add grade
+        // TODO: Encrypt with student's public key
         grades[studentAddress].push(
             Grade(disciplineCode, period, media, attendance, status)
         );
@@ -529,5 +528,15 @@ contract AcademicRegistry {
 
             isAllowedByStudent[studentAddress][allowedAddress] = true;
             emit AllowedAddressAdded(studentAddress, allowedAddress);
+    }
+
+    /// @notice Adds the public key of the student's account.
+    /// @dev Verifies the existence of the student.
+    /// @param publicKey Public key of the student's account.
+    function addStudentPublicKey(
+        string calldata publicKey) public studentExists(msg.sender) onlyStudent(msg.sender) {
+
+        // Add public key
+        students[msg.sender].publicKey = publicKey;
     }
 }

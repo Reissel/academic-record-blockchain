@@ -27,8 +27,7 @@ contract AcademicRegistry {
 
     /// @dev Emitted when a new student is added.
     /// @param studentAddress The address of the student being added.
-    /// @param name The name of the student.
-    event StudentAdded(address indexed studentAddress, string name);
+    event StudentAdded(address indexed studentAddress);
 
     /// @dev Emitted when a new grade is added for a student.
     /// @param studentAddress The address of the student receiving the grade.
@@ -40,6 +39,10 @@ contract AcademicRegistry {
     /// @param studentAddress The address of the student allowing the address.
     /// @param allowedAddress The address being allowed by the student.
     event AllowedAddressAdded(address indexed studentAddress, address allowedAddress);
+
+    /// @dev Emitted when the information of the student is added by it.
+    /// @param studentAddress The address of the student adding the information.
+    event StudentInformationAdded(address indexed studentAddress);
 
     /// @dev Contract ownership. Only the owner can perform certain actions.
     address private contractOwner;
@@ -78,7 +81,7 @@ contract AcademicRegistry {
     /// @dev Represents a student.
     struct Student {
         address idStudentAccount;
-        string name;
+        string encryptedInformation;
         string publicKey;
     }
 
@@ -385,11 +388,9 @@ contract AcademicRegistry {
     /// @dev Verifies that the student is not already registered before adding them to the mapping.
     /// @param institutionAddress Address of the institution where the student is being added.
     /// @param studentAddress Address of the student being added.
-    /// @param name Name of the student.
     function addStudent(
         address institutionAddress,
-        address studentAddress,
-        string calldata name
+        address studentAddress
     ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
         // Check if student is already registered
         require(
@@ -397,11 +398,11 @@ contract AcademicRegistry {
             "Student already registered!"
         );
 
-        students[studentAddress] = Student(studentAddress, name, "");
+        students[studentAddress] = Student(studentAddress, "", "");
         isAllowedByStudent[studentAddress][institutionAddress] = true;
         isAllowedByStudent[studentAddress][studentAddress] = true;
 
-        emit StudentAdded(studentAddress, name);
+        emit StudentAdded(studentAddress);
     }
 
     /// @notice Retrieves a student's data from the registry.
@@ -530,13 +531,19 @@ contract AcademicRegistry {
             emit AllowedAddressAdded(studentAddress, allowedAddress);
     }
 
-    /// @notice Adds the public key of the student's account.
+    /// @notice Adds the public key and personal information of the student's account.
     /// @dev Verifies the existence of the student.
     /// @param publicKey Public key of the student's account.
-    function addStudentPublicKey(
-        string calldata publicKey) public studentExists(msg.sender) onlyStudent(msg.sender) {
+    /// @param encryptedInformation Personal information of the student encrypted by its public key.
+    function addStudentInformation(
+        string calldata publicKey,
+        string calldata encryptedInformation) public studentExists(msg.sender) onlyStudent(msg.sender) {
 
         // Add public key
         students[msg.sender].publicKey = publicKey;
+        // Add personal information
+        students[msg.sender].encryptedInformation = encryptedInformation;
+
+        emit StudentInformationAdded(msg.sender);
     }
 }

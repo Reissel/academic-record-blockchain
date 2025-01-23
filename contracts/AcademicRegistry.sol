@@ -546,4 +546,34 @@ contract AcademicRegistry {
 
         emit StudentInformationAdded(msg.sender);
     }
+
+    function addGrades(
+        address institutionAddress,
+        address studentAddress,
+        Grade[] calldata gradeInfos
+    ) public studentExists(studentAddress) institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
+        for (uint256 i = 0; i < gradeInfos.length; i++) {
+            Grade memory grade = gradeInfos[i];
+
+            // Check if student is enrolled in the discipline
+            require(
+                enrollments[studentAddress][keccak256(abi.encodePacked(grade.disciplineCode))],
+                "Student not enrolled in the discipline!"
+            );
+
+            // Check if grade for this period and discipline already exists
+            for (uint256 j = 0; j < grades[studentAddress].length; j++) {
+                require(
+                    !(keccak256(abi.encodePacked(grades[studentAddress][j].disciplineCode)) == keccak256(abi.encodePacked(grade.disciplineCode)) &&
+                    grades[studentAddress][j].period == grade.period),
+                    "Grade already recorded for this discipline and period!"
+                );
+            }
+
+            grades[studentAddress].push(
+                Grade(grade.disciplineCode, grade.period, grade.media, grade.attendance, grade.status)
+            );      
+        }   
+    }
+
 }

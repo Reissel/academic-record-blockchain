@@ -533,14 +533,10 @@ contract AcademicRegistry {
 
     /// @notice Adds the public key and personal information of the student's account.
     /// @dev Verifies the existence of the student.
-    /// @param publicKey Public key of the student's account.
     /// @param encryptedInformation Personal information of the student encrypted by its public key.
     function addStudentInformation(
-        string calldata publicKey,
         string calldata encryptedInformation) public studentExists(msg.sender) onlyStudent(msg.sender) {
 
-        // Add public key
-        students[msg.sender].publicKey = publicKey;
         // Add personal information
         students[msg.sender].encryptedInformation = encryptedInformation;
 
@@ -576,4 +572,13 @@ contract AcademicRegistry {
         }   
     }
 
+
+    /// @notice Returns the Student's personal information.
+    /// @dev Verifies the existence of the student.
+    /// @param studentAddress Address of the Student to retrieve personal information.
+    function retrieveStudentInformation(
+        address studentAddress) public studentExists(studentAddress) view returns (string memory) {
+
+        return students[studentAddress].encryptedInformation;
+    }
 }

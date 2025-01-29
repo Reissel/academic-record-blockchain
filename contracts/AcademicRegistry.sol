@@ -574,10 +574,10 @@ contract AcademicRegistry {
 
 
     /// @notice Returns the Student's personal information.
-    /// @dev Verifies the existence of the student.
+    /// @dev Verifies the existence of the student and permitted addresses.
     /// @param studentAddress Address of the Student to retrieve personal information.
     function retrieveStudentInformation(
-        address studentAddress) public studentExists(studentAddress) view returns (string memory) {
+        address studentAddress) public studentExists(studentAddress) onlyAllowedAddresses(studentAddress, msg.sender) view returns (string memory) {
 
         return students[studentAddress].encryptedInformation;
     }

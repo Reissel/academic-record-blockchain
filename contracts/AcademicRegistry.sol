@@ -544,6 +544,6 @@ contract AcademicRegistry {
             return "institution";
         }
 
-        return "none";
+        return "viewer";
     }
 }

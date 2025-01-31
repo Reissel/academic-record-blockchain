@@ -26,8 +26,8 @@ contract AcademicRegistry {
     /// @dev Emitted when a new grade is added for a student.
     /// @param studentAddress The address of the student receiving the grade.
     /// @param disciplineCode The code of the discipline for which the grade is recorded.
-    /// @param period The period in which the grade was recorded.
-    event GradeAdded(address indexed studentAddress, string disciplineCode, uint8 period);
+    /// @param semester The semester in which the grade was recorded.
+    event GradeAdded(address indexed studentAddress, string disciplineCode, uint8 semester);
 
     /// @dev Emitted when a new address is allowed by a student.
     /// @param studentAddress The address of the student allowing the address.
@@ -43,7 +43,7 @@ contract AcademicRegistry {
 
     /// @dev Represents an institution.
     struct Institution {
-        address idInstitutionAccount;
+        address institutionAddress;
         string name;
         string document;
     }
@@ -60,14 +60,14 @@ contract AcademicRegistry {
     struct Discipline {
         string code;
         string name;
-        string ementa;
+        string syllabus;
         int workload;
         int creditCount;
     }
 
     /// @dev Represents a student.
     struct Student {
-        address idStudentAccount;
+        address studentAddress;
         string encryptedInformation;
         string publicKey;
     }
@@ -75,8 +75,8 @@ contract AcademicRegistry {
     /// @dev Represents a student's grade.
     struct Grade {
         string disciplineCode;
-        uint8 period;
-        uint8 media;
+        uint8 semester;
+        uint8 grade;
         uint8 attendance;
         bool status; // true = approved, false = failed
     }
@@ -136,7 +136,7 @@ contract AcademicRegistry {
     /// @dev Ensures the institution is registered.
     modifier institutionExists(address institutionAddress) {
         require(
-            institutions[institutionAddress].idInstitutionAccount != address(0),
+            institutions[institutionAddress].institutionAddress != address(0),
             "Institution is not registered!"
         );
         _;
@@ -145,7 +145,7 @@ contract AcademicRegistry {
     /// @dev Ensures the student is registered.
     modifier studentExists(address studentAddress) {
         require(
-            students[studentAddress].idStudentAccount != address(0),
+            students[studentAddress].studentAddress != address(0),
             "Student is not registered!"
         );
         _;
@@ -184,7 +184,7 @@ contract AcademicRegistry {
         string calldata document
     ) public onlyOwner {
         require(
-            institutions[institutionAddress].idInstitutionAccount == address(0),
+            institutions[institutionAddress].institutionAddress == address(0),
             "Institution already registered!"
         );
 
@@ -266,7 +266,7 @@ contract AcademicRegistry {
     /// @param courseCode Code of the course to which the discipline is being added.
     /// @param disciplineCode Unique code of the discipline.
     /// @param name Name of the discipline.
-    /// @param ementa Syllabus of the discipline.
+    /// @param syllabus Syllabus of the discipline.
     /// @param workload Workload of the discipline in hours.
     /// @param creditCount Number of credits assigned to the discipline.
     function addDisciplineToCourse(
@@ -274,25 +274,25 @@ contract AcademicRegistry {
         string calldata courseCode,
         string calldata disciplineCode,
         string calldata name,
-        string calldata ementa,
+        string calldata syllabus,
         int workload,
         int creditCount
     ) public courseExists(institutionAddress, courseCode) onlyInstitution(institutionAddress) {
-        _addDisciplineToCourse(courseCode, disciplineCode, name, ementa, workload, creditCount);
+        _addDisciplineToCourse(courseCode, disciplineCode, name, syllabus, workload, creditCount);
     }
 
     /// @dev Internal function to add a discipline to a course.
     /// @param courseCode Code of the course to which the discipline is being added.
     /// @param disciplineCode Unique code of the discipline.
     /// @param name Name of the discipline.
-    /// @param ementa Syllabus of the discipline.
+    /// @param syllabus Syllabus of the discipline.
     /// @param workload Workload of the discipline in hours.
     /// @param creditCount Number of credits assigned to the discipline.
     function _addDisciplineToCourse(
         string calldata courseCode,
         string calldata disciplineCode,
         string calldata name,
-        string calldata ementa,
+        string calldata syllabus,
         int workload,
         int creditCount
     ) internal {
@@ -308,7 +308,7 @@ contract AcademicRegistry {
 
         // Add the discipline to the course
         disciplinesByCourse[courseHash].push(
-            Discipline(disciplineCode, name, ementa, workload, creditCount)
+            Discipline(disciplineCode, name, syllabus, workload, creditCount)
         );
 
         // Mark discipline as registered in the course
@@ -340,7 +340,7 @@ contract AcademicRegistry {
     ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
         // Check if student is already registered
         require(
-            students[studentAddress].idStudentAccount == address(0),
+            students[studentAddress].studentAddress == address(0),
             "Student already registered!"
         );
 
@@ -380,7 +380,7 @@ contract AcademicRegistry {
 
         // Check if student is registered
         require(
-            students[studentAddress].idStudentAccount != address(0),
+            students[studentAddress].studentAddress != address(0),
             "Student not registered!"
         );
 
@@ -394,21 +394,21 @@ contract AcademicRegistry {
         enrollments[studentAddress][disciplineHash] = true;
     }
 
-    /// @notice Adds a grade for a student in a specific discipline and period.
-    /// @dev Verifies the existence of the institution, student, and discipline. Ensures that no duplicate grades exist for the same period and discipline before adding a new grade.
+    /// @notice Adds a grade for a student in a specific discipline and semester.
+    /// @dev Verifies the existence of the institution, student, and discipline. Ensures that no duplicate grades exist for the same semester and discipline before adding a new grade.
     /// @param institutionAddress Address of the institution recording the grade.
     /// @param studentAddress Address of the student receiving the grade.
     /// @param disciplineCode Code of the discipline for which the grade is recorded.
-    /// @param period Academic period in which the grade is being recorded.
-    /// @param media Final grade of the student.
+    /// @param semester Academic semester in which the grade is being recorded.
+    /// @param grade Final grade of the student.
     /// @param attendance Attendance percentage of the student.
     /// @param status Approval status (true = approved, false = failed).
     function addGrade(
         address institutionAddress,
         address studentAddress,
         string calldata disciplineCode,
-        uint8 period,
-        uint8 media,
+        uint8 semester,
+        uint8 grade,
         uint8 attendance,
         bool status
     ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
@@ -416,7 +416,7 @@ contract AcademicRegistry {
 
         // Check if student is registered
         require(
-            students[studentAddress].idStudentAccount != address(0),
+            students[studentAddress].studentAddress != address(0),
             "Student not registered!"
         );
 
@@ -426,26 +426,26 @@ contract AcademicRegistry {
             "Student not enrolled in the discipline!"
         );
 
-        // Check if grade for this period and discipline already exists
+        // Check if grade for this semester and discipline already exists
         Grade[] storage studentGrades = grades[studentAddress];
         for (uint256 i = 0; i < studentGrades.length; i++) {
             require(
                 !(
                     keccak256(abi.encodePacked(studentGrades[i].disciplineCode)) ==
                         keccak256(abi.encodePacked(disciplineCode)) &&
-                    studentGrades[i].period == period
+                    studentGrades[i].semester == semester
                 ),
-                "Grade already recorded for this discipline and period!"
+                "Grade already recorded for this discipline and semester!"
             );
         }
 
         // Add grade
         // TODO: Encrypt with student's public key
         grades[studentAddress].push(
-            Grade(disciplineCode, period, media, attendance, status)
+            Grade(disciplineCode, semester, grade, attendance, status)
         );
 
-        emit GradeAdded(studentAddress, disciplineCode, period);
+        emit GradeAdded(studentAddress, disciplineCode, semester);
     }
 
     /// @notice Retrieves all grades for a specific student.
@@ -503,17 +503,17 @@ contract AcademicRegistry {
                 "Student not enrolled in the discipline!"
             );
 
-            // Check if grade for this period and discipline already exists
+            // Check if grade for this semester and discipline already exists
             for (uint256 j = 0; j < grades[studentAddress].length; j++) {
                 require(
                     !(keccak256(abi.encodePacked(grades[studentAddress][j].disciplineCode)) == keccak256(abi.encodePacked(grade.disciplineCode)) &&
-                    grades[studentAddress][j].period == grade.period),
-                    "Grade already recorded for this discipline and period!"
+                    grades[studentAddress][j].semester == grade.semester),
+                    "Grade already recorded for this discipline and semester!"
                 );
             }
 
             grades[studentAddress].push(
-                Grade(grade.disciplineCode, grade.period, grade.media, grade.attendance, grade.status)
+                Grade(grade.disciplineCode, grade.semester, grade.grade, grade.attendance, grade.status)
             );      
         }   
     }
@@ -536,11 +536,11 @@ contract AcademicRegistry {
         returns (string memory)
     {
 
-        if (students[msg.sender].idStudentAccount != address(0)) {
+        if (students[msg.sender].studentAddress != address(0)) {
             return "student";
         }
 
-        if (institutions[msg.sender].idInstitutionAccount != address(0)) {
+        if (institutions[msg.sender].institutionAddress != address(0)) {
             return "institution";
         }
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.27;
 
 /// @title Academic registry smart contract.
-/// @notice This contract manages records for institutions, courses, disciplines, professors, students, and grades in an academic registry system.
+/// @notice This contract manages records for institutions, courses, disciplines, students, and grades in an academic registry system.
 contract AcademicRegistry {
     /// @dev Emitted when a new institution is added.
     /// @param institutionAddress The address of the institution being registered.
@@ -18,12 +18,6 @@ contract AcademicRegistry {
     /// @param courseCode The code of the course to which the discipline is being added.
     /// @param disciplineCode The code of the discipline being added.
     event DisciplineAdded(string courseCode, string disciplineCode);
-
-    /// @dev Emitted when a new professor is added to an institution.
-    /// @param institutionAddress The address of the institution adding the professor.
-    /// @param professorAddress The address of the professor being added.
-    /// @param name The name of the professor.
-    event ProfessorAdded(address indexed institutionAddress, address professorAddress, string name);
 
     /// @dev Emitted when a new student is added.
     /// @param studentAddress The address of the student being added.
@@ -71,13 +65,6 @@ contract AcademicRegistry {
         int creditCount;
     }
 
-    /// @dev Represents a professor.
-    struct Professor {
-        address idProfessorAccount;
-        string name;
-        string document;
-    }
-
     /// @dev Represents a student.
     struct Student {
         address idStudentAccount;
@@ -98,17 +85,12 @@ contract AcademicRegistry {
     mapping(address => Institution) private institutions;
     mapping(address => Course[]) private courses;
 
-    // Maps the Institution address to the professors it has registered
-    mapping(address => Professor[]) private professors;
-
     mapping(address => Student) private students;
     mapping(address => Grade[]) private grades;
     
     // Mapping to store the relationship between disciplines and courses
     mapping(bytes32 => mapping(bytes32 => bool)) private disciplineExistsInCourse; // [courseHash][disciplineHash]
     mapping(bytes32 => Discipline[]) private disciplinesByCourse; // [courseHash] => disciplines
-
-    mapping(address => mapping(address => bool)) private isProfessorInInstitution;
 
     // Mapping to store the relationship between students and disciplines
     mapping(address => mapping(bytes32 => bool)) private enrollments;
@@ -348,42 +330,6 @@ contract AcademicRegistry {
         return disciplinesByCourse[courseHash];
     }
 
-    /// @notice Adds a professor to a specific institution.
-    /// @dev Ensures that the professor is not already registered in the institution before adding them. Maintains a mapping to track registration status.
-    /// @param institutionAddress Address of the institution where the professor is being added.
-    /// @param professorAddress Address of the professor being added.
-    /// @param name Name of the professor.
-    /// @param document Identification document of the professor.
-    function addProfessorToInstitution(
-        address institutionAddress,
-        address professorAddress,
-        string calldata name,
-        string calldata document
-    ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
-        // Check if professor is already registered
-        require(
-            !isProfessorInInstitution[institutionAddress][professorAddress],
-            "Professor already registered in this institution!"
-        );
-
-        professors[institutionAddress].push(Professor(professorAddress, name, document));
-        isProfessorInInstitution[institutionAddress][professorAddress] = true;
-
-        emit ProfessorAdded(institutionAddress, professorAddress, name);
-    }
-
-    /// @notice Retrieves the list of professors associated with a specific institution.
-    /// @dev Retrieves the list of professors associated with a specific institution using its address as the mapping key.
-    /// @param institutionAddress Address of the institution.
-    /// @return List of professors registered in the institution.
-    function getProfessorsFromInstitution(address institutionAddress)
-        public
-        view
-        returns (Professor[] memory)
-    {
-        return professors[institutionAddress];
-    }
-
     /// @notice Adds a student to the academic registry system.
     /// @dev Verifies that the student is not already registered before adding them to the mapping.
     /// @param institutionAddress Address of the institution where the student is being added.
@@ -580,5 +526,24 @@ contract AcademicRegistry {
         address studentAddress) public studentExists(studentAddress) onlyAllowedAddresses(studentAddress, msg.sender) view returns (string memory) {
 
         return students[studentAddress].encryptedInformation;
+    }
+
+    /// @notice Retrieves the permission for the message sender's account address.
+    /// @dev Returns a string containing the role of the sender's account address.
+    /// @return A string representing the account's role in the system.
+    function getPermission()
+        public view
+        returns (string memory)
+    {
+
+        if (students[msg.sender].idStudentAccount != address(0)) {
+            return "student";
+        }
+
+        if (institutions[msg.sender].idInstitutionAccount != address(0)) {
+            return "institution";
+        }
+
+        return "none";
     }
 }

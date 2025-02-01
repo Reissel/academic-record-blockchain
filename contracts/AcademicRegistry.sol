@@ -533,17 +533,19 @@ contract AcademicRegistry {
     /// @return A string representing the account's role in the system.
     function getPermission()
         public view
-        returns (string memory)
-    {
+        returns (string memory) {
+            if (msg.sender == contractOwner) {
+                return "owner";
+            }
 
-        if (students[msg.sender].studentAddress != address(0)) {
-            return "student";
-        }
+            if (students[msg.sender].studentAddress != address(0)) {
+                return "student";
+            }
 
-        if (institutions[msg.sender].institutionAddress != address(0)) {
-            return "institution";
-        }
+            if (institutions[msg.sender].institutionAddress != address(0)) {
+                return "institution";
+            }
 
-        return "viewer";
+            return "viewer";
     }
 }

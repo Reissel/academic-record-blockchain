@@ -98,6 +98,9 @@ contract AcademicRegistry {
     // Mapping to store addresses that can retrieve Student data
     mapping(address => mapping(address => bool)) private isAllowedByStudent;
 
+    mapping(address => address) private studentToInstitution; // studentAddress => institutionAddress
+    mapping(address => string) private studentToCourse;
+
     address[] private institutionAddressList;
 
     /// @dev Restricts function execution to the contract owner.
@@ -248,7 +251,7 @@ contract AcademicRegistry {
         emit CourseAdded(institutionAddress, code);
     }
 
-    /// @notice Retrieves all courses associated with an institution.
+    /* /// @notice Retrieves all courses associated with an institution.
     /// @dev Retrieves the list of courses offered by an institution using its address as the mapping key.
     /// @param institutionAddress Address of the institution.
     /// @return List of courses offered by the institution.
@@ -258,7 +261,7 @@ contract AcademicRegistry {
         returns (Course[] memory)
     {
         return courses[institutionAddress];
-    }
+    } */
 
     /// @notice Adds a new discipline to a specific course in an institution.
     /// @dev Uses the internal helper `_addDisciplineToCourse` to handle logic. Ensures the course exists before adding the discipline.
@@ -345,6 +348,7 @@ contract AcademicRegistry {
         );
 
         students[studentAddress] = Student(studentAddress, "", "");
+        studentToInstitution[studentAddress] = institutionAddress;
         isAllowedByStudent[studentAddress][institutionAddress] = true;
         isAllowedByStudent[studentAddress][studentAddress] = true;
 
@@ -392,6 +396,11 @@ contract AcademicRegistry {
 
         // Enroll the student
         enrollments[studentAddress][disciplineHash] = true;
+
+        // Register the student's course (if not already registered)
+        if (bytes(studentToCourse[studentAddress]).length == 0) {
+            studentToCourse[studentAddress] = courseCode;
+        }
     }
 
     /// @notice Adds a grade for a student in a specific discipline and semester.
@@ -547,5 +556,34 @@ contract AcademicRegistry {
             }
 
             return "viewer";
+    }
+
+    /// @notice Retrieves the institution and course information for a student.
+    /// @param studentAddress Address of the student.
+    /// @return institution Institution data.
+    /// @return course Course data.
+    function getStudentInstitutionData(address studentAddress)
+        public
+        view
+        returns (Institution memory institution, Course memory course) {
+        address institutionAddress = studentToInstitution[studentAddress];
+
+        string memory courseCode = studentToCourse[studentAddress];
+
+        require(
+            bytes(courseCode).length > 0, "Student not enrolled in any course!"
+        );
+
+        Course memory foundCourse;
+        Course[] memory institutionCourses = courses[institutionAddress];
+
+        for (uint i = 0; i < institutionCourses.length; i++) {
+            if (keccak256(abi.encodePacked(institutionCourses[i].code)) == keccak256(abi.encodePacked(courseCode))) {
+                foundCourse = institutionCourses[i];
+                break;
+            }
+        }
+
+        return (institutions[institutionAddress], foundCourse);
     }
 }

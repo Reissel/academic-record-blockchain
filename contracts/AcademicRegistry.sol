@@ -320,7 +320,7 @@ contract AcademicRegistry {
         emit DisciplineAdded(courseCode, disciplineCode);
     }
 
-    /// @notice Retrieves the list of disciplines associated with a course.
+    /* /// @notice Retrieves the list of disciplines associated with a course.
     /// @dev Retrieves all disciplines associated with a specific course using its hashed code as the mapping key.
     /// @param courseCode Code of the course whose disciplines are to be retrieved.
     /// @return List of disciplines offered in the course.
@@ -331,7 +331,7 @@ contract AcademicRegistry {
     {
         bytes32 courseHash = keccak256(abi.encodePacked(courseCode));
         return disciplinesByCourse[courseHash];
-    }
+    } */
 
     /// @notice Adds a student to the academic registry system.
     /// @dev Verifies that the student is not already registered before adding them to the mapping.
@@ -457,7 +457,7 @@ contract AcademicRegistry {
         emit GradeAdded(studentAddress, disciplineCode, semester);
     }
 
-    /// @notice Retrieves all grades for a specific student.
+    /* /// @notice Retrieves all grades for a specific student.
     /// @dev Grades are stored in an array indexed by the student's address.
     /// @param studentAddress Address of the student.
     /// @return An array of Grade structures containing the student's grades.
@@ -467,7 +467,7 @@ contract AcademicRegistry {
         returns (Grade[] memory)
     {
         return grades[studentAddress];
-    }
+    } */
 
     /// @notice Adds an address to be allowed to retrieve the student data.
     /// @dev Verifies the existence of the student.
@@ -585,5 +585,34 @@ contract AcademicRegistry {
         }
 
         return (institutions[institutionAddress], foundCourse);
+    }
+
+    /// @notice Retrieves the grades along with detailed discipline information for a specific student.
+    /// @param studentAddress Address of the student.
+    /// @return An array of tuples containing grade and discipline information.
+    function getStudentTranscript(address studentAddress)
+        public
+        view
+        onlyAllowedAddresses(studentAddress, msg.sender)
+        returns (Grade[] memory, Discipline[] memory)
+    {
+        Grade[] memory studentGrades = grades[studentAddress];
+        Discipline[] memory disciplineDetails = new Discipline[](studentGrades.length);
+
+        for (uint256 i = 0; i < studentGrades.length; i++) {
+            bytes32 disciplineHash = keccak256(abi.encodePacked(studentGrades[i].disciplineCode));
+            bytes32 courseHash = keccak256(abi.encodePacked(studentToCourse[studentAddress]));
+
+            Discipline[] memory courseDisciplines = disciplinesByCourse[courseHash];
+
+            for (uint256 j = 0; j < courseDisciplines.length; j++) {
+                if (keccak256(abi.encodePacked(courseDisciplines[j].code)) == disciplineHash) {
+                    disciplineDetails[i] = courseDisciplines[j];
+                    break;
+                }
+            }
+        }
+
+        return (studentGrades, disciplineDetails);
     }
 }

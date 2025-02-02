@@ -39,7 +39,7 @@ contract AcademicRegistry {
     event StudentInformationAdded(address indexed studentAddress);
 
     /// @dev Contract ownership. Only the owner can perform certain actions.
-    address private contractOwner;
+    address immutable private contractOwner;
 
     /// @dev Represents an institution.
     struct Institution {
@@ -130,7 +130,7 @@ contract AcademicRegistry {
     /// @dev Restricts function execution to a specific student.
     modifier onlyAllowedAddresses(address studentAddress, address requesterAddress) {
         require(
-            isAllowedByStudent[studentAddress][msg.sender] == true,
+            isAllowedByStudent[studentAddress][msg.sender],
             "Only allowed addresses can perform this action!"
         );
         _;
@@ -478,7 +478,7 @@ contract AcademicRegistry {
         address studentAddress) public studentExists(studentAddress) onlyStudent(studentAddress) {
 
             require(
-                isAllowedByStudent[studentAddress][allowedAddress] == false,
+                !isAllowedByStudent[studentAddress][allowedAddress],
                 "Address is already allowed!"
             );
 
@@ -574,17 +574,13 @@ contract AcademicRegistry {
             bytes(courseCode).length > 0, "Student not enrolled in any course!"
         );
 
-        Course memory foundCourse;
         Course[] memory institutionCourses = courses[institutionAddress];
 
         for (uint i = 0; i < institutionCourses.length; i++) {
             if (keccak256(abi.encodePacked(institutionCourses[i].code)) == keccak256(abi.encodePacked(courseCode))) {
-                foundCourse = institutionCourses[i];
-                break;
+                return (institutions[institutionAddress], institutionCourses[i]);
             }
         }
-
-        return (institutions[institutionAddress], foundCourse);
     }
 
     /// @notice Retrieves the grades along with detailed discipline information for a specific student.

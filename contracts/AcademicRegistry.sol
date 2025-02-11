@@ -506,7 +506,7 @@ contract AcademicRegistry {
     function addEncryptedInfoWithRecipientKey(
         address allowedAddress,
         address studentAddress,
-        string memory encryptedData) public studentExists(studentAddress) onlyStudent(studentAddress) {
+        string calldata encryptedData) public studentExists(studentAddress) onlyStudent(studentAddress) {
 
             // require(
             //     isAllowedByStudent[studentAddress][allowedAddress],
@@ -535,34 +535,34 @@ contract AcademicRegistry {
         emit StudentInformationAdded(msg.sender);
     }
 
-    // function addGrades(
-    //     address institutionAddress,
-    //     address studentAddress,
-    //     Grade[] calldata gradeInfos
-    // ) public studentExists(studentAddress) institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
-    //     for (uint256 i = 0; i < gradeInfos.length; i++) {
-    //         Grade memory grade = gradeInfos[i];
+    function addGrades(
+        address institutionAddress,
+        address studentAddress,
+        Grade[] calldata gradeInfos
+    ) public studentExists(studentAddress) institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
+        for (uint256 i = 0; i < gradeInfos.length; i++) {
+            Grade memory grade = gradeInfos[i];
 
-    //         // Check if student is enrolled in the discipline
-    //         // require(
-    //         //     enrollments[studentAddress][keccak256(abi.encodePacked(grade.disciplineCode))],
-    //         //     "Student not enrolled in the discipline!"
-    //         // );
+            // Check if student is enrolled in the discipline
+            // require(
+            //     enrollments[studentAddress][keccak256(abi.encodePacked(grade.disciplineCode))],
+            //     "Student not enrolled in the discipline!"
+            // );
 
-    //         // Check if grade for this semester and discipline already exists
-    //         for (uint256 j = 0; j < grades[studentAddress].length; j++) {
-    //             require(
-    //                 !(keccak256(abi.encodePacked(grades[studentAddress][j].disciplineCode)) == keccak256(abi.encodePacked(grade.disciplineCode)) &&
-    //                 grades[studentAddress][j].semester == grade.semester),
-    //                 "Grade already recorded for this discipline and semester!"
-    //             );
-    //         }
+            // Check if grade for this semester and discipline already exists
+            for (uint256 j = 0; j < grades[studentAddress].length; j++) {
+                require(
+                    !(keccak256(abi.encodePacked(grades[studentAddress][j].disciplineCode)) == keccak256(abi.encodePacked(grade.disciplineCode)) &&
+                    grades[studentAddress][j].semester == grade.semester),
+                    "Grade already recorded for this discipline and semester!"
+                );
+            }
 
-    //         grades[studentAddress].push(
-    //             Grade(grade.disciplineCode, grade.semester, grade.grade, grade.attendance, grade.status)
-    //         );      
-    //     }   
-    // }
+            grades[studentAddress].push(
+                Grade(grade.disciplineCode, grade.semester, grade.grade, grade.attendance, grade.status)
+            );      
+        }   
+    }
 
 
     /// @notice Returns the Student's personal information.
@@ -654,7 +654,7 @@ contract AcademicRegistry {
     /// @notice Retrieves the grades along with detailed discipline information for a specific student.
     /// @param studentAddress Address of the student.
     /// @param encryptKey The recipient's public encrypt key.
-    function requestAccess(address studentAddress, string memory encryptKey)
+    function requestAccess(address studentAddress, string calldata encryptKey)
         public studentExists(studentAddress)
     {
         recipientEncryptKey[studentAddress][msg.sender] = encryptKey;

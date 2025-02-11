@@ -98,6 +98,10 @@ contract AcademicRegistry {
     // Mapping to store addresses that can retrieve Student data
     mapping(address => mapping(address => bool)) private isAllowedByStudent;
 
+    mapping(address => mapping(address => string)) private recipientEncryptKey;
+
+    mapping(address => mapping(address => string)) private studentInfoRecipient;
+
     mapping(address => address) private studentToInstitution; // studentAddress => institutionAddress
     mapping(address => string) private studentToCourse;
 
@@ -127,14 +131,14 @@ contract AcademicRegistry {
         _;
     }
 
-    /// @dev Restricts function execution to a specific student.
-    modifier onlyAllowedAddresses(address studentAddress, address requesterAddress) {
-        require(
-            isAllowedByStudent[studentAddress][msg.sender],
-            "Only allowed addresses can perform this action!"
-        );
-        _;
-    }
+    // /// @dev Restricts function execution to a specific student.
+    // modifier onlyAllowedAddresses(address studentAddress, address requesterAddress) {
+    //     require(
+    //         isAllowedByStudent[studentAddress][msg.sender],
+    //         "Only allowed addresses can perform this action!"
+    //     );
+    //     _;
+    // }
 
     /// @dev Ensures the institution is registered.
     modifier institutionExists(address institutionAddress) {
@@ -349,8 +353,8 @@ contract AcademicRegistry {
 
         students[studentAddress] = Student(studentAddress, "", "");
         studentToInstitution[studentAddress] = institutionAddress;
-        isAllowedByStudent[studentAddress][institutionAddress] = true;
-        isAllowedByStudent[studentAddress][studentAddress] = true;
+        // isAllowedByStudent[studentAddress][institutionAddress] = true;
+        // isAllowedByStudent[studentAddress][studentAddress] = true;
 
         emit StudentAdded(studentAddress);
     }
@@ -367,41 +371,41 @@ contract AcademicRegistry {
         return students[studentAddress];
     }
 
-    /// @notice Enrolls a student in a discipline within a course.
-    /// @dev Checks if the institution, student, and discipline exist before allowing enrollment. Uses hashes for efficient mapping lookups.
-    /// @param institutionAddress Address of the institution offering the discipline.
-    /// @param studentAddress Address of the student being enrolled.
-    /// @param disciplineCode Code of the discipline.
-    /// @param courseCode Code of the course containing the discipline.
-    function enrollStudentInDiscipline(
-        address institutionAddress,
-        address studentAddress,
-        string calldata disciplineCode,
-        string calldata courseCode
-    ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
-        bytes32 courseHash = keccak256(abi.encodePacked(courseCode));
-        bytes32 disciplineHash = keccak256(abi.encodePacked(disciplineCode));
+    // /// @notice Enrolls a student in a discipline within a course.
+    // /// @dev Checks if the institution, student, and discipline exist before allowing enrollment. Uses hashes for efficient mapping lookups.
+    // /// @param institutionAddress Address of the institution offering the discipline.
+    // /// @param studentAddress Address of the student being enrolled.
+    // /// @param disciplineCode Code of the discipline.
+    // /// @param courseCode Code of the course containing the discipline.
+    // function enrollStudentInDiscipline(
+    //     address institutionAddress,
+    //     address studentAddress,
+    //     string calldata disciplineCode,
+    //     string calldata courseCode
+    // ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
+    //     bytes32 courseHash = keccak256(abi.encodePacked(courseCode));
+    //     bytes32 disciplineHash = keccak256(abi.encodePacked(disciplineCode));
 
-        // Check if student is registered
-        require(
-            students[studentAddress].studentAddress != address(0),
-            "Student not registered!"
-        );
+    //     // Check if student is registered
+    //     require(
+    //         students[studentAddress].studentAddress != address(0),
+    //         "Student not registered!"
+    //     );
 
-        // Check if discipline exists in the course
-        require(
-            disciplineExistsInCourse[courseHash][disciplineHash],
-            "Discipline not found in the course!"
-        );
+    //     // Check if discipline exists in the course
+    //     require(
+    //         disciplineExistsInCourse[courseHash][disciplineHash],
+    //         "Discipline not found in the course!"
+    //     );
 
-        // Enroll the student
-        enrollments[studentAddress][disciplineHash] = true;
+    //     // Enroll the student
+    //     enrollments[studentAddress][disciplineHash] = true;
 
-        // Register the student's course (if not already registered)
-        if (bytes(studentToCourse[studentAddress]).length == 0) {
-            studentToCourse[studentAddress] = courseCode;
-        }
-    }
+    //     // Register the student's course (if not already registered)
+    //     if (bytes(studentToCourse[studentAddress]).length == 0) {
+    //         studentToCourse[studentAddress] = courseCode;
+    //     }
+    // }
 
     /// @notice Adds a grade for a student in a specific discipline and semester.
     /// @dev Verifies the existence of the institution, student, and discipline. Ensures that no duplicate grades exist for the same semester and discipline before adding a new grade.
@@ -421,7 +425,7 @@ contract AcademicRegistry {
         uint8 attendance,
         bool status
     ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
-        bytes32 disciplineHash = keccak256(abi.encodePacked(disciplineCode));
+        // bytes32 disciplineHash = keccak256(abi.encodePacked(disciplineCode));
 
         // Check if student is registered
         require(
@@ -430,10 +434,10 @@ contract AcademicRegistry {
         );
 
         // Check if student is enrolled in the discipline
-        require(
-            enrollments[studentAddress][disciplineHash],
-            "Student not enrolled in the discipline!"
-        );
+        // require(
+        //     enrollments[studentAddress][disciplineHash],
+        //     "Student not enrolled in the discipline!"
+        // );
 
         // Check if grade for this semester and discipline already exists
         Grade[] storage studentGrades = grades[studentAddress];
@@ -473,17 +477,50 @@ contract AcademicRegistry {
     /// @dev Verifies the existence of the student.
     /// @param allowedAddress Address of the account to be given permition to retrieve student data.
     /// @param studentAddress Address of the student allowing its data to be retrieved by the allowedAddress.
-    function addAllowedAddress(
+    function retrieveRecipientEncrpytKey(
         address allowedAddress,
-        address studentAddress) public studentExists(studentAddress) onlyStudent(studentAddress) {
+        address studentAddress) public view studentExists(studentAddress) onlyStudent(studentAddress)
+        returns (string memory) {
+
+            // require(
+            //     !isAllowedByStudent[studentAddress][allowedAddress],
+            //     "Address is already allowed!"
+            // );
 
             require(
-                !isAllowedByStudent[studentAddress][allowedAddress],
-                "Address is already allowed!"
+                bytes(recipientEncryptKey[studentAddress][allowedAddress]).length != 0,
+                "Recipient's Key was not shared yet!"
             );
 
-            isAllowedByStudent[studentAddress][allowedAddress] = true;
-            emit AllowedAddressAdded(studentAddress, allowedAddress);
+            // isAllowedByStudent[studentAddress][allowedAddress] = true;
+            // emit AllowedAddressAdded(studentAddress, allowedAddress);
+
+            return recipientEncryptKey[studentAddress][allowedAddress];
+    }
+
+    /// @notice Adds the student's data encrypted with the recipient's public encryption key.
+    /// @dev Verifies the existence of the student.
+    /// @param allowedAddress Address of the account to be given permition to retrieve student data.
+    /// @param studentAddress Address of the student allowing its data to be retrieved by the allowedAddress.
+    /// @param encryptedData Student's info encrypted with the Recipient public encryption key.
+    function addEncryptedInfoWithRecipientKey(
+        address allowedAddress,
+        address studentAddress,
+        string memory encryptedData) public studentExists(studentAddress) onlyStudent(studentAddress) {
+
+            // require(
+            //     isAllowedByStudent[studentAddress][allowedAddress],
+            //     "Address is not already allowed!"
+            // );
+
+            studentInfoRecipient[studentAddress][allowedAddress] = encryptedData;
+    }
+
+    function getEncryptedInfoWithRecipientKey(
+        address allowedAddress,
+        address studentAddress) public view studentExists(studentAddress)
+        returns (string memory) {
+            return studentInfoRecipient[studentAddress][allowedAddress];
     }
 
     /// @notice Adds the public key and personal information of the student's account.
@@ -498,41 +535,43 @@ contract AcademicRegistry {
         emit StudentInformationAdded(msg.sender);
     }
 
-    function addGrades(
-        address institutionAddress,
-        address studentAddress,
-        Grade[] calldata gradeInfos
-    ) public studentExists(studentAddress) institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
-        for (uint256 i = 0; i < gradeInfos.length; i++) {
-            Grade memory grade = gradeInfos[i];
+    // function addGrades(
+    //     address institutionAddress,
+    //     address studentAddress,
+    //     Grade[] calldata gradeInfos
+    // ) public studentExists(studentAddress) institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
+    //     for (uint256 i = 0; i < gradeInfos.length; i++) {
+    //         Grade memory grade = gradeInfos[i];
 
-            // Check if student is enrolled in the discipline
-            require(
-                enrollments[studentAddress][keccak256(abi.encodePacked(grade.disciplineCode))],
-                "Student not enrolled in the discipline!"
-            );
+    //         // Check if student is enrolled in the discipline
+    //         // require(
+    //         //     enrollments[studentAddress][keccak256(abi.encodePacked(grade.disciplineCode))],
+    //         //     "Student not enrolled in the discipline!"
+    //         // );
 
-            // Check if grade for this semester and discipline already exists
-            for (uint256 j = 0; j < grades[studentAddress].length; j++) {
-                require(
-                    !(keccak256(abi.encodePacked(grades[studentAddress][j].disciplineCode)) == keccak256(abi.encodePacked(grade.disciplineCode)) &&
-                    grades[studentAddress][j].semester == grade.semester),
-                    "Grade already recorded for this discipline and semester!"
-                );
-            }
+    //         // Check if grade for this semester and discipline already exists
+    //         for (uint256 j = 0; j < grades[studentAddress].length; j++) {
+    //             require(
+    //                 !(keccak256(abi.encodePacked(grades[studentAddress][j].disciplineCode)) == keccak256(abi.encodePacked(grade.disciplineCode)) &&
+    //                 grades[studentAddress][j].semester == grade.semester),
+    //                 "Grade already recorded for this discipline and semester!"
+    //             );
+    //         }
 
-            grades[studentAddress].push(
-                Grade(grade.disciplineCode, grade.semester, grade.grade, grade.attendance, grade.status)
-            );      
-        }   
-    }
+    //         grades[studentAddress].push(
+    //             Grade(grade.disciplineCode, grade.semester, grade.grade, grade.attendance, grade.status)
+    //         );      
+    //     }   
+    // }
 
 
     /// @notice Returns the Student's personal information.
     /// @dev Verifies the existence of the student and permitted addresses.
     /// @param studentAddress Address of the Student to retrieve personal information.
     function retrieveStudentInformation(
-        address studentAddress) public studentExists(studentAddress) onlyAllowedAddresses(studentAddress, msg.sender) view returns (string memory) {
+        address studentAddress) public studentExists(studentAddress) 
+        //onlyAllowedAddresses(studentAddress, msg.sender)
+        view returns (string memory) {
 
         return students[studentAddress].encryptedInformation;
     }
@@ -589,7 +628,7 @@ contract AcademicRegistry {
     function getStudentTranscript(address studentAddress)
         public
         view
-        onlyAllowedAddresses(studentAddress, msg.sender)
+        //onlyAllowedAddresses(studentAddress, msg.sender)
         returns (Grade[] memory, Discipline[] memory)
     {
         Grade[] memory studentGrades = grades[studentAddress];
@@ -610,5 +649,14 @@ contract AcademicRegistry {
         }
 
         return (studentGrades, disciplineDetails);
+    }
+
+    /// @notice Retrieves the grades along with detailed discipline information for a specific student.
+    /// @param studentAddress Address of the student.
+    /// @param encryptKey The recipient's public encrypt key.
+    function requestAccess(address studentAddress, string memory encryptKey)
+        public studentExists(studentAddress)
+    {
+        recipientEncryptKey[studentAddress][msg.sender] = encryptKey;
     }
 }

@@ -27,7 +27,7 @@ contract AcademicRegistry {
     /// @param studentAddress The address of the student receiving the grade.
     /// @param disciplineCode The code of the discipline for which the grade is recorded.
     /// @param semester The semester in which the grade was recorded.
-    event GradeAdded(address indexed studentAddress, string disciplineCode, uint8 semester);
+    event GradeAdded(address indexed studentAddress, string disciplineCode, uint8 year, uint8 semester);
 
     /// @dev Emitted when a new address is allowed by a student.
     /// @param studentAddress The address of the student allowing the address.
@@ -46,6 +46,7 @@ contract AcademicRegistry {
         address institutionAddress;
         string name;
         string document;
+        string publicKey;
     }
 
     /// @dev Represents a course.
@@ -68,14 +69,17 @@ contract AcademicRegistry {
     /// @dev Represents a student.
     struct Student {
         address studentAddress;
-        string encryptedInformation;
+        string selfEncryptedInformation;
+        string institutionEncryptedInformation;
         string publicKey;
+        string publicHash;
     }
 
     /// @dev Represents a student's grade.
     struct Grade {
         string disciplineCode;
         uint8 semester;
+        uint8 year;
         uint8 grade;
         uint8 attendance;
         bool status; // true = approved, false = failed
@@ -95,11 +99,10 @@ contract AcademicRegistry {
     // Mapping to store the relationship between students and disciplines
     mapping(address => mapping(bytes32 => bool)) private enrollments;
 
-    // Mapping to store addresses that can retrieve Student data
-    mapping(address => mapping(address => bool)) private isAllowedByStudent;
-
+    // Mapping to store the recipient's public key with the student's address and the recipient's address 
     mapping(address => mapping(address => string)) private recipientEncryptKey;
 
+    // Mapping to store the student's information encrypted with the recipient's public key with the student's address and the recipient's address
     mapping(address => mapping(address => string)) private studentInfoRecipient;
 
     mapping(address => address) private studentToInstitution; // studentAddress => institutionAddress
@@ -131,15 +134,6 @@ contract AcademicRegistry {
         _;
     }
 
-    // /// @dev Restricts function execution to a specific student.
-    // modifier onlyAllowedAddresses(address studentAddress, address requesterAddress) {
-    //     require(
-    //         isAllowedByStudent[studentAddress][msg.sender],
-    //         "Only allowed addresses can perform this action!"
-    //     );
-    //     _;
-    // }
-
     /// @dev Ensures the institution is registered.
     modifier institutionExists(address institutionAddress) {
         require(
@@ -154,6 +148,15 @@ contract AcademicRegistry {
         require(
             students[studentAddress].studentAddress != address(0),
             "Student is not registered!"
+        );
+        _;
+    }
+
+    /// @dev Ensures the student is registered for an institution.
+    modifier studentIsInstitution(address studentAddress, address institutionAddress) {
+        require(
+            studentToInstitution[studentAddress] == institutionAddress,
+            "Student is not in this Institution!"
         );
         _;
     }
@@ -195,10 +198,19 @@ contract AcademicRegistry {
             "Institution already registered!"
         );
 
-        institutions[institutionAddress] = Institution(institutionAddress, name, document);
+        institutions[institutionAddress] = Institution(institutionAddress, name, document, "");
         institutionAddressList.push(institutionAddress);
 
         emit InstitutionAdded(institutionAddress, name);
+    }
+
+    /// @notice Adds the instituition public key.
+    /// @dev 
+    function addInstitutionPublicKey(
+        address institutionAddress,
+        string calldata publicKey
+    ) public onlyInstitution(institutionAddress) {
+        institutions[institutionAddress].publicKey = publicKey;
     }
 
     /// @notice Retrieves an institution's data.
@@ -254,18 +266,6 @@ contract AcademicRegistry {
 
         emit CourseAdded(institutionAddress, code);
     }
-
-    /* /// @notice Retrieves all courses associated with an institution.
-    /// @dev Retrieves the list of courses offered by an institution using its address as the mapping key.
-    /// @param institutionAddress Address of the institution.
-    /// @return List of courses offered by the institution.
-    function getCoursesFromInstitution(address institutionAddress)
-        public
-        view
-        returns (Course[] memory)
-    {
-        return courses[institutionAddress];
-    } */
 
     /// @notice Adds a new discipline to a specific course in an institution.
     /// @dev Uses the internal helper `_addDisciplineToCourse` to handle logic. Ensures the course exists before adding the discipline.
@@ -324,19 +324,6 @@ contract AcademicRegistry {
         emit DisciplineAdded(courseCode, disciplineCode);
     }
 
-    /* /// @notice Retrieves the list of disciplines associated with a course.
-    /// @dev Retrieves all disciplines associated with a specific course using its hashed code as the mapping key.
-    /// @param courseCode Code of the course whose disciplines are to be retrieved.
-    /// @return List of disciplines offered in the course.
-    function getDisciplinesFromCourse(string calldata courseCode)
-        public
-        view
-        returns (Discipline[] memory)
-    {
-        bytes32 courseHash = keccak256(abi.encodePacked(courseCode));
-        return disciplinesByCourse[courseHash];
-    } */
-
     /// @notice Adds a student to the academic registry system.
     /// @dev Verifies that the student is not already registered before adding them to the mapping.
     /// @param institutionAddress Address of the institution where the student is being added.
@@ -351,10 +338,8 @@ contract AcademicRegistry {
             "Student already registered!"
         );
 
-        students[studentAddress] = Student(studentAddress, "", "");
+        students[studentAddress] = Student(studentAddress, "", "", "", "");
         studentToInstitution[studentAddress] = institutionAddress;
-        // isAllowedByStudent[studentAddress][institutionAddress] = true;
-        // isAllowedByStudent[studentAddress][studentAddress] = true;
 
         emit StudentAdded(studentAddress);
     }
@@ -419,8 +404,10 @@ contract AcademicRegistry {
     function addGrade(
         address institutionAddress,
         address studentAddress,
+        string calldata courseCode,
         string calldata disciplineCode,
         uint8 semester,
+        uint8 year,
         uint8 grade,
         uint8 attendance,
         bool status
@@ -433,11 +420,7 @@ contract AcademicRegistry {
             "Student not registered!"
         );
 
-        // Check if student is enrolled in the discipline
-        // require(
-        //     enrollments[studentAddress][disciplineHash],
-        //     "Student not enrolled in the discipline!"
-        // );
+        studentToCourse[studentAddress] = courseCode;
 
         // Check if grade for this semester and discipline already exists
         Grade[] storage studentGrades = grades[studentAddress];
@@ -455,10 +438,10 @@ contract AcademicRegistry {
         // Add grade
         // TODO: Encrypt with student's public key
         grades[studentAddress].push(
-            Grade(disciplineCode, semester, grade, attendance, status)
+            Grade(disciplineCode, semester, year, grade, attendance, status)
         );
 
-        emit GradeAdded(studentAddress, disciplineCode, semester);
+        emit GradeAdded(studentAddress, disciplineCode, year, semester);
     }
 
     /* /// @notice Retrieves all grades for a specific student.
@@ -482,18 +465,10 @@ contract AcademicRegistry {
         address studentAddress) public view studentExists(studentAddress) onlyStudent(studentAddress)
         returns (string memory) {
 
-            // require(
-            //     !isAllowedByStudent[studentAddress][allowedAddress],
-            //     "Address is already allowed!"
-            // );
-
             require(
                 bytes(recipientEncryptKey[studentAddress][allowedAddress]).length != 0,
                 "Recipient's Key was not shared yet!"
             );
-
-            // isAllowedByStudent[studentAddress][allowedAddress] = true;
-            // emit AllowedAddressAdded(studentAddress, allowedAddress);
 
             return recipientEncryptKey[studentAddress][allowedAddress];
     }
@@ -507,11 +482,6 @@ contract AcademicRegistry {
         address allowedAddress,
         address studentAddress,
         string calldata encryptedData) public studentExists(studentAddress) onlyStudent(studentAddress) {
-
-            // require(
-            //     isAllowedByStudent[studentAddress][allowedAddress],
-            //     "Address is not already allowed!"
-            // );
 
             studentInfoRecipient[studentAddress][allowedAddress] = encryptedData;
     }
@@ -527,12 +497,26 @@ contract AcademicRegistry {
     /// @dev Verifies the existence of the student.
     /// @param encryptedInformation Personal information of the student encrypted by its public key.
     function addStudentInformation(
-        string calldata encryptedInformation) public studentExists(msg.sender) onlyStudent(msg.sender) {
+        string calldata encryptedInformation,
+        string calldata publicKey,
+        string calldata publicHash
+        ) onlyStudent(msg.sender) public studentExists(msg.sender) {
 
         // Add personal information
-        students[msg.sender].encryptedInformation = encryptedInformation;
+        students[msg.sender].institutionEncryptedInformation = encryptedInformation;
+        students[msg.sender].publicKey = publicKey;
+        students[msg.sender].publicHash = publicHash;
 
         emit StudentInformationAdded(msg.sender);
+    }
+
+    function confirmStudentInformation(
+        address studentAddress,
+        address institutionAddress,
+        string calldata encryptedInformation
+    ) public onlyInstitution(msg.sender) studentExists(studentAddress) studentIsInstitution(studentAddress, institutionAddress) {
+
+        students[studentAddress].selfEncryptedInformation = encryptedInformation;
     }
 
     function addGrades(
@@ -559,7 +543,7 @@ contract AcademicRegistry {
             }
 
             grades[studentAddress].push(
-                Grade(grade.disciplineCode, grade.semester, grade.grade, grade.attendance, grade.status)
+                Grade(grade.disciplineCode, grade.year, grade.semester, grade.grade, grade.attendance, grade.status)
             );      
         }   
     }
@@ -573,7 +557,7 @@ contract AcademicRegistry {
         //onlyAllowedAddresses(studentAddress, msg.sender)
         view returns (string memory) {
 
-        return students[studentAddress].encryptedInformation;
+        return students[studentAddress].selfEncryptedInformation;
     }
 
     /// @notice Retrieves the permission for the message sender's account address.

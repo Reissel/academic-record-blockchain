@@ -13,6 +13,7 @@ module.exports = {
         enabled: true,
         runs: 1
       }
+    }
   },
   paths: {
     artifacts: "./src/artifacts",
@@ -20,10 +21,9 @@ module.exports = {
   networks: {
     hardhat: {
       chainId: 1337,
-      },
+    },
     ganache: {
       url: "http://127.0.0.1:7545",
-      }
-    },
-  }
+    }
+  },
 }

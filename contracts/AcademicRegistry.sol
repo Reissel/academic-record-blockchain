@@ -27,7 +27,7 @@ contract AcademicRegistry {
     /// @param studentAddress The address of the student receiving the grade.
     /// @param disciplineCode The code of the discipline for which the grade is recorded.
     /// @param semester The semester in which the grade was recorded.
-    event GradeAdded(address indexed studentAddress, string disciplineCode, uint8 year, uint8 semester);
+    event GradeAdded(address indexed studentAddress, string disciplineCode, uint16 year, uint8 semester);
 
     /// @dev Emitted when a new address is allowed by a student.
     /// @param studentAddress The address of the student allowing the address.
@@ -79,7 +79,7 @@ contract AcademicRegistry {
     struct Grade {
         string disciplineCode;
         uint8 semester;
-        uint8 year;
+        uint16 year;
         uint8 grade;
         uint8 attendance;
         bool status; // true = approved, false = failed
@@ -407,7 +407,7 @@ contract AcademicRegistry {
         string calldata courseCode,
         string calldata disciplineCode,
         uint8 semester,
-        uint8 year,
+        uint16 year,
         uint8 grade,
         uint8 attendance,
         bool status
@@ -543,8 +543,8 @@ contract AcademicRegistry {
             }
 
             grades[studentAddress].push(
-                Grade(grade.disciplineCode, grade.year, grade.semester, grade.grade, grade.attendance, grade.status)
-            );      
+                Grade(grade.disciplineCode, grade.semester, grade.year, grade.grade, grade.attendance, grade.status)
+            );
         }   
     }
 

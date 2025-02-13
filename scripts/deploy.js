@@ -8,7 +8,7 @@ async function main() {
   await academicRegistry.waitForDeployment();
   
   console.log(
-    `Deployed to ${academicRegistry.target}!`
+    `Deployed to ${academicRegistry.target}`
   );
 }
 

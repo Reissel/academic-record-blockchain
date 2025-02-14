@@ -400,7 +400,6 @@ contract AcademicRegistry {
         }
 
         // Add grade
-        // TODO: Encrypt with student's public key
         grades[studentAddress].push(
             Grade(disciplineCode, semester, year, grade, attendance, status)
         );

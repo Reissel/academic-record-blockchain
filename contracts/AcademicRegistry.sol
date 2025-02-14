@@ -473,8 +473,14 @@ contract AcademicRegistry {
     function addGrades(
         address institutionAddress,
         address studentAddress,
+        string calldata courseCode,
         Grade[] calldata gradeInfos
     ) public studentExists(studentAddress) institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
+        // Ensures that only the first insertion is written
+        if (bytes(studentToCourse[studentAddress]).length == 0) {
+            studentToCourse[studentAddress] = courseCode;
+        }
+
         for (uint256 i = 0; i < gradeInfos.length; i++) {
             Grade memory grade = gradeInfos[i];
 

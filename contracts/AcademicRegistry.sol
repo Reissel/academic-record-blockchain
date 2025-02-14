@@ -96,9 +96,6 @@ contract AcademicRegistry {
     mapping(bytes32 => mapping(bytes32 => bool)) private disciplineExistsInCourse; // [courseHash][disciplineHash]
     mapping(bytes32 => Discipline[]) private disciplinesByCourse; // [courseHash] => disciplines
 
-    // Mapping to store the relationship between students and disciplines
-    mapping(address => mapping(bytes32 => bool)) private enrollments;
-
     // Mapping to store the recipient's public key with the student's address and the recipient's address 
     mapping(address => mapping(address => string)) private recipientEncryptKey;
 

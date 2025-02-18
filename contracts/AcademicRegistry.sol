@@ -158,6 +158,21 @@ contract AcademicRegistry {
         _;
     }
 
+    /// @dev Ensures the requester account is not an registered account.abi
+    modifier requesterAccountIsValid(address requesterAddress) {
+        require(msg.sender != contractOwner, "The contract owner can't perform this action!");
+        require(
+            students[requesterAddress].studentAddress != requesterAddress,
+            "The student can't request access to its own data!"
+        );
+
+        require(
+            institutions[requesterAddress].institutionAddress == address(0),
+            "A institution can't request access to a student's data!"
+        );
+        _;
+    }
+
     /// @dev Ensures the address has shared its encryption key.
     modifier recipientEncryptKeyShared(address studentAddress, address allowedAddress) {
         require(
@@ -582,7 +597,7 @@ contract AcademicRegistry {
     /// @param studentAddress Address of the student.
     /// @param encryptKey The recipient's public encrypt key.
     function requestAccess(address studentAddress, string calldata encryptKey)
-        public studentExists(studentAddress)
+        public studentExists(studentAddress) requesterAccountIsValid(msg.sender)
     {
         recipientEncryptKey[studentAddress][msg.sender] = encryptKey;
     }

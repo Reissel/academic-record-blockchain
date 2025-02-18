@@ -158,6 +158,15 @@ contract AcademicRegistry {
         _;
     }
 
+    /// @dev Ensures the address has shared its encryption key.
+    modifier recipientEncryptKeyShared(address studentAddress, address allowedAddress) {
+        require(
+                bytes(recipientEncryptKey[studentAddress][allowedAddress]).length != 0,
+                "Recipient's Key was not shared yet!"
+            );
+        _;
+    }
+
     /// @dev Ensures the course exists for the provided institution.
     modifier courseExists(address institutionAddress, string memory courseCode) {
         bool exists = false;
@@ -413,13 +422,8 @@ contract AcademicRegistry {
     /// @param studentAddress Address of the student allowing its data to be retrieved by the allowedAddress.
     function retrieveRecipientEncrpytKey(
         address allowedAddress,
-        address studentAddress) public view studentExists(studentAddress) onlyStudent(studentAddress)
+        address studentAddress) public view studentExists(studentAddress) onlyStudent(studentAddress) recipientEncryptKeyShared(studentAddress, allowedAddress)
         returns (string memory) {
-
-            require(
-                bytes(recipientEncryptKey[studentAddress][allowedAddress]).length != 0,
-                "Recipient's Key was not shared yet!"
-            );
 
             return recipientEncryptKey[studentAddress][allowedAddress];
     }
@@ -432,7 +436,7 @@ contract AcademicRegistry {
     function addEncryptedInfoWithRecipientKey(
         address allowedAddress,
         address studentAddress,
-        string calldata encryptedData) public studentExists(studentAddress) onlyStudent(studentAddress) {
+        string calldata encryptedData) public studentExists(studentAddress) onlyStudent(studentAddress) recipientEncryptKeyShared(studentAddress, allowedAddress) {
 
             studentInfoRecipient[studentAddress][allowedAddress] = encryptedData;
     }

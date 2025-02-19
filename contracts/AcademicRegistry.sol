@@ -54,7 +54,7 @@ contract AcademicRegistry {
         string code;
         string name;
         string courseType;
-        int numberOfSemesters;
+        uint8 numberOfSemesters;
     }
 
     /// @dev Represents a discipline.
@@ -62,8 +62,8 @@ contract AcademicRegistry {
         string code;
         string name;
         string syllabus;
-        int workload;
-        int creditCount;
+        uint8 workload;
+        uint8 creditCount;
     }
 
     /// @dev Represents a student.
@@ -269,7 +269,7 @@ contract AcademicRegistry {
         string calldata code,
         string calldata name,
         string calldata courseType,
-        int numberOfSemesters
+        uint8 numberOfSemesters
     ) public institutionExists(institutionAddress) onlyInstitution(institutionAddress) {
         // Checks if the course is already registered in the institution
         Course[] storage institutionCourses = courses[institutionAddress];
@@ -303,8 +303,8 @@ contract AcademicRegistry {
         string calldata disciplineCode,
         string calldata name,
         string calldata syllabus,
-        int workload,
-        int creditCount
+        uint8 workload,
+        uint8 creditCount
     ) public courseExists(institutionAddress, courseCode) onlyInstitution(institutionAddress) {
         _addDisciplineToCourse(courseCode, disciplineCode, name, syllabus, workload, creditCount);
     }
@@ -321,8 +321,8 @@ contract AcademicRegistry {
         string calldata disciplineCode,
         string calldata name,
         string calldata syllabus,
-        int workload,
-        int creditCount
+        uint8 workload,
+        uint8 creditCount
     ) internal {
         // Hash the course code and discipline code for consistent mapping
         bytes32 courseHash = keccak256(abi.encodePacked(courseCode));
